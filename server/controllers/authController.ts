@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import { User } from "../models/User.js";
 import bcrypt from 'bcrypt'
-import jwt from 'jsonwebtoken'
+import { generateToken } from "../utils/token.js";
 
-const generateToken = (id: string)=>{
+/*const generateToken = (id: string)=>{
     return jwt.sign({id}, process.env.JWT_SECRET || "fallback_secret", {expiresIn: '30d'} );
-}
+}*/
 
 // Register user
 // POST /api/auth/register
@@ -50,3 +50,5 @@ export const loginUser = async (req:Request, res: Response): Promise<void> => {
         res.status(500).json({message: error?.message || "Server error"})
     }
 }
+
+export const me = async (req: Request, res: Response) => {res.json(req.user)}

@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import api from "../api/axios";
 import toast from "react-hot-toast";
 
+
+
 export default function Login() {
     const [loginState, setLoginState] = useState(true);
     const [name, setName] = useState("");
@@ -29,6 +31,17 @@ export default function Login() {
        }
     };
 
+    const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+
+    const goto = (provider: "google") => {
+        window.location.href = `${apiBase}/api/auth/oauth/${provider}`;
+    };
+
+    useEffect(() => {
+    const err = new URLSearchParams(location.search).get("error");
+    if (err === "oauth_failed") toast.error("Sign-in cancelled or failed.");
+    }, []);
+
     useEffect(()=>{
         if(user) navigate('/dashboard')
     },[user])
@@ -44,6 +57,10 @@ export default function Login() {
                         </Link>
                         <p className="text-slate-500 text-sm mt-1">Sign in to your Dashboard</p>
                     </div>
+                    <div className="flex flex-col gap-2 mb-4">
+                        <button onClick={() => goto("google")}   className="btn btn-outline">Continue with Google</button>
+                    </div>
+                    <div className="text-center text-xs opacity-60 my-3">or</div>
                     <form onSubmit={handleSubmit} className="space-y-5 text-sm">
                         {!loginState && (
                             <div>
