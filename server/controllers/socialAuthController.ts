@@ -81,7 +81,7 @@ export const syncAccounts = async (req: AuthRequest, res: Response) : Promise<vo
 
         const data = result.data as any;
         const zernioAccounts: any[] = data?.accounts || (Array.isArray(data) ? data : []);
-        const supportedPlatforms = ["twitter", "linkedin", "facebook", "instagram"];
+        const supportedPlatforms = ["twitter", "linkedin", "facebook", "instagram", "tiktok"];
         const syncedAccounts = [];
 
         for(const zAccount of zernioAccounts){

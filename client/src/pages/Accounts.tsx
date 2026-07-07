@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { PLATFORMS } from "../assets/assets"
-import { PlusIcon } from "lucide-react"
+import { PlusIcon, RefreshCwIcon } from "lucide-react"
 import AccountList from "../components/AccountList"
 import PlatformPickerModal from "../components/PlatformPickerModal"
 import toast from "react-hot-toast"
@@ -12,6 +12,7 @@ const Accounts = () => {
   const [accounts, setAccounts] = useState<any[]>([])
   const [connecting, setConnecting] = useState<string | null>(null)
   const [showPlatformPicker, setShowPlatformPicker] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   const fetchAccounts = async (isSync = false, platform?: string | null, successMsg?: string) => {
     try {
@@ -65,6 +66,15 @@ const Accounts = () => {
     }
   }
 
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      await fetchAccounts(true, null, "Accounts synced!")
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const handleDisconnect = async (accountId: string) => {
     try {
       await api.delete(`/api/accounts/${accountId}`)
@@ -85,9 +95,14 @@ const Accounts = () => {
           <h2 className="text-xl text-slate-900">Connected Accounts</h2>
           <p className="text-slate-500 text-sm mt-0.5">{accounts.length} of {PLATFORMS.length} platforms connected</p>
         </div>
-        <button onClick={()=> setShowPlatformPicker(true)} className="flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full font-medium transition-all w-full sm:w-auto justify-center">
-          <PlusIcon className="size-4" /> Connect Account
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button onClick={handleSync} disabled={syncing} title="Pull in accounts connected via the Zernio dashboard" className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 rounded-full font-medium transition-all disabled:opacity-60">
+            <RefreshCwIcon className={`size-4 ${syncing ? "animate-spin" : ""}`} /> Sync
+          </button>
+          <button onClick={()=> setShowPlatformPicker(true)} className="flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full font-medium transition-all flex-1 sm:flex-none justify-center">
+            <PlusIcon className="size-4" /> Connect Account
+          </button>
+        </div>
       </div>
 
       {/* Platform picker modal */}

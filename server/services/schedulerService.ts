@@ -24,10 +24,24 @@ export const initScheduler = ()=>{
                         console.log(`No connected Zernio accounts found for post ${post._id}`);
                         continue;
                     }
-                    const zernioPlatforms = accounts.map((acc)=>({
-                        platform: acc.platform as any,
-                        accountId: acc.zernioAccountId!
-                    }))
+                    const zernioPlatforms = accounts.map((acc)=>{
+                        const target: any = {
+                            platform: acc.platform as any,
+                            accountId: acc.zernioAccountId!,
+                        }
+                        // TikTok direct posts require a privacy level and interaction
+                        // settings. SELF_ONLY is the universally-allowed option and the
+                        // only one permitted while the app is in TikTok's unaudited mode.
+                        if(acc.platform === "tiktok"){
+                            target.platformSpecificData = {
+                                privacyLevel: "SELF_ONLY",
+                                allowComment: true,
+                                allowDuet: true,
+                                allowStitch: true,
+                            }
+                        }
+                        return target;
+                    })
 
                     const payload = {
                         content: post.content,
