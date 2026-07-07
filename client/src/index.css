@@ -1,45 +1,57 @@
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap");
 @import "tailwindcss";
 
+@font-face {
+  font-display: swap;
+  font-family: "PolySans";
+  src: url("./assets/fonts/PolySans-Bulky.ttf") format("truetype");
+  font-weight: 700;
+}
+@font-face {
+  font-display: swap;
+  font-family: "Gilroy";
+  src: url("./assets/fonts/Gilroy-Regular.ttf") format("truetype");
+  font-weight: 400;
+}
+
 @theme {
-    --color-bg: #fafafa;
-    --color-text: #111111;
-    --font-sans: "Outfit", sans-serif;
-    --font-serif: "Urbanist", sans-serif;
+  --color-bg: #fafafa;
+  --color-text: #111111;
+  --font-sans: "Gilroy", sans-serif;
+  --font-serif: "PolySans", serif;
 }
 
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 html {
-    scroll-behavior: smooth;
+  scroll-behavior: smooth;
 }
 
 body {
-    background-color: var(--color-bg);
-    color: var(--color-text);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: transparent;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-    background: #ddd;
-    border-radius: 99px;
+  background: #ddd;
+  border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #bbb;
+  background: #bbb;
 }
