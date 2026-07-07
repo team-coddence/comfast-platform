@@ -3,24 +3,24 @@ import { StarIcon } from "lucide-react";
 const testimonials = [
     {
         name: "Sarah K.",
-        role: "Marketing Manager",
+        role: "Responsable Marketing",
         avatar: "S",
         avatarBg: "from-red-400 to-pink-400",
-        text: "Scheduler has saved our team 10+ hours a week. The AI composer is genuinely impressive — it writes content that sounds like us.",
+        text: "Scheduler a fait gagner plus de 10 heures par semaine à notre équipe. Le compositeur IA est vraiment impressionnant — il écrit du contenu qui nous ressemble.",
     },
     {
         name: "Marcus L.",
-        role: "Indie Creator",
+        role: "Créateur Indépendant",
         avatar: "M",
         avatarBg: "from-violet-400 to-purple-500",
-        text: "I used to dread posting. Now I queue up a whole week of content in 20 minutes. The smart scheduling feature alone is worth it.",
+        text: "Avant, je redoutais de publier. Maintenant, je planifie une semaine entière de contenu en 20 minutes. La planification intelligente vaut le coup à elle seule.",
     },
     {
         name: "Priya D.",
-        role: "Startup Founder",
+        role: "Fondatrice de Startup",
         avatar: "P",
         avatarBg: "from-sky-400 to-blue-500",
-        text: "Finally a scheduler that's beautiful AND powerful. The clean dashboard makes it easy to see exactly what's going out and when.",
+        text: "Enfin un planificateur qui est à la fois beau ET puissant. Le tableau de bord épuré permet de voir facilement ce qui est publié et quand.",
     },
 ];
 
@@ -31,12 +31,12 @@ export default function Testimonials() {
                 <div className="text-center mb-14">
                     <div className="mb-6 inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/15 text-red-500 text-[11px] font-medium tracking-[0.06em] uppercase px-3.5 py-1.5 rounded-full">
                         <StarIcon className="size-3 " />
-                        Testimonials
+                        Témoignages
                     </div>
                     <h2 className="font-serif font-medium text-4xl sm:text-5xl leading-tight text-gray-900">
-                        Loved by <span className="text-red-400 ">creators &amp; teams</span>
+                        Aimé par les <span className="text-red-400 ">créateurs &amp; équipes</span>
                     </h2>
-                    <p className="mt-5 text-gray-500 max-w-md mx-auto">Join thousands of people who automate their social media with Scheduler.</p>
+                    <p className="mt-5 text-gray-500 max-w-md mx-auto">Rejoignez des milliers de personnes qui automatisent leurs réseaux sociaux avec Scheduler.</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     {testimonials.map((t, i) => (

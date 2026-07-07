@@ -14,30 +14,30 @@ export default function Hero() {
                 {/* Badge */}
                 <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 text-red-500 text-sm px-3.5 py-1.5 rounded-full mb-8">
                     <span className="size-1.5 bg-red-400 rounded-full" />
-                    AI-Powered Social Media Automation
+                    Automatisation des réseaux sociaux par l'IA
                 </div>
 
                 {/* Headline */}
                 <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl xl:text-8xl text-slate-900">
-                    Schedule smarter.
+                    Planifiez plus intelligemment.
                     <br />
-                    <span className="text-red-400 italic">Grow faster.</span>
+                    <span className="text-red-400 italic">Grandissez plus vite.</span>
                 </h1>
 
                 {/* Subheadline */}
-                <p className="mt-7 text-gray-500 max-w-2xl mx-auto">Scheduler lets you create, schedule, and auto-engage across all your social platforms — powered by AI that writes your captions and replies for you.</p>
+                <p className="mt-7 text-gray-500 max-w-2xl mx-auto">Scheduler vous permet de créer, planifier et interagir automatiquement sur toutes vos plateformes sociales — propulsé par une IA qui écrit vos légendes et répond à vos commentaires pour vous.</p>
 
                 {/* CTAs */}
                 <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <Link to="/login" className="bg-red-500 text-white rounded-full font-medium hover:bg-red-600 hover:shadow-[0_8px_24px_rgba(239,68,68,0.35)] inline-flex items-center gap-2 text-[15px] px-8 py-3.5 w-full sm:w-auto justify-center transition-all">
-                        Start for free <ArrowRightIcon className="size-4" />
+                    <Link to="/login" className="bg-red-500 text-white rounded-full font-medium hover:bg-red-600 hover:shadow-[0_8px_24px_rgba(239,68,68,0.35)] inline-flex items-center gap-2 text-[15px] px-8 py-3.5 w-full sm:w-auto justify-center transition-all cursor-pointer">
+                        Commencer gratuitement <ArrowRightIcon className="size-4" />
                     </Link>
-                    <a href="#how-it-works" className="bg-transparent text-[#333] border-[1.5px] border-black/10 rounded-full font-medium hover:bg-black/5 hover:border-black/20 inline-flex items-center gap-2 text-[15px] px-8 py-3.5 w-full sm:w-auto backdrop-blur justify-center transition-all">
-                        See how it works
+                    <a href="#how-it-works" className="bg-transparent text-[#333] border-[1.5px] border-black/10 rounded-full font-medium hover:bg-black/5 hover:border-black/20 inline-flex items-center gap-2 text-[15px] px-8 py-3.5 w-full sm:w-auto backdrop-blur justify-center transition-all cursor-pointer">
+                        Voir comment ça marche
                     </a>
                 </div>
 
-                <p className="mt-5 text-xs text-gray-400">No credit card required · Free forever plan available</p>
+                <p className="mt-5 text-xs text-gray-400">Aucune carte de crédit requise · Plan gratuit à vie disponible</p>
             </div>
 
             {/* Dashboard mockup */}
@@ -56,10 +56,10 @@ export default function Hero() {
                         {/* Stat row */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                             {[
-                                { val: "12", label: "Scheduled" },
-                                { val: "48", label: "Published" },
-                                { val: "4", label: "Accounts" },
-                                { val: "3", label: "AI Rules" },
+                                { val: "12", label: "Planifiés" },
+                                { val: "48", label: "Publiés" },
+                                { val: "4", label: "Comptes" },
+                                { val: "3", label: "Règles IA" },
                             ].map((s) => (
                                 <div key={s.label} className="rounded-xl p-4 bg-white" style={{ border: "1px solid rgba(0,0,0,0.06)" }}>
                                     <div className="text-2xl font-bold text-gray-900 tabular-nums">{s.val}</div>
@@ -70,11 +70,11 @@ export default function Hero() {
 
                         {/* Activity list */}
                         <div className="rounded-xl p-4 space-y-3 bg-white" style={{ border: "1px solid rgba(0,0,0,0.06)" }}>
-                            <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Recent Activity</div>
+                            <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Activité récente</div>
                             {[
-                                { text: "Post published to LinkedIn & Twitter", time: "2m ago" },
-                                { text: "AI replied to 3 comments", time: "15m ago" },
-                                { text: "New post scheduled for tomorrow 9am", time: "1h ago" },
+                                { text: "Message publié sur LinkedIn et Twitter", time: "il y a 2 min" },
+                                { text: "L'IA a répondu à 3 commentaires", time: "il y a 15 min" },
+                                { text: "Nouveau message planifié pour demain à 9h", time: "il y a 1h" },
                             ].map((item) => (
                                 <div key={item.text} className="flex items-center gap-3">
                                     <DotIcon className="size-5 text-gray-300" />

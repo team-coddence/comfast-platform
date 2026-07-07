@@ -30,22 +30,22 @@ const Dashboard = () => {
 
   const statCards = [
     {
-      label: "Scheduled Posts",
+      label: "Messages planifiés",
       value: stats.scheduled,
       icon: ClockIcon,
-      trend: "+2 today",
+      trend: "+2 aujourd'hui",
     },
     {
-      label: "Published Posts",
+      label: "Messages publiés",
       value: stats.published,
       icon: CheckCircleIcon,
-      trend: "All time",
+      trend: "Total",
     },
     {
-      label: "Connected Accounts",
+      label: "Comptes connectés",
       value: stats.connectedAccounts,
       icon: Share2Icon,
-      trend: "Active",
+      trend: "Actifs",
     },
   ]
 
@@ -53,8 +53,8 @@ const Dashboard = () => {
     <div className="space-y-8">
       {/* Welcome bar */}
       <div>
-        <h2 className="text-2xl text-slate-900">Good morning! 👋</h2>
-        <p className="text-slate-500 text-sm mt-0.5">Here's what's happening with your social accounts today.</p>
+        <h2 className="text-2xl text-slate-900">Bonjour ! 👋</h2>
+        <p className="text-slate-500 text-sm mt-0.5">Voici ce qui se passe sur vos comptes sociaux aujourd'hui.</p>
       </div>
 
       {/* Stat cards */}
@@ -79,8 +79,8 @@ const Dashboard = () => {
       {/* Activity Feed */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <h2 className="text-slate-900">Recent Activity</h2>
-            <span className="text-sm text-slate-400">{activities.length} events</span>
+            <h2 className="text-slate-900">Activité récente</h2>
+            <span className="text-sm text-slate-400">{activities.length} événements</span>
         </div>
 
         {activities.length === 0 ? (
@@ -88,8 +88,8 @@ const Dashboard = () => {
             <div className="size-12 bg-slate-100 rounded-xl flex items-center justify-center mb-3">
               <ActivityIcon className="size-6 text-slate-400"/>
             </div>
-            <p className="text-slate-500">No activity yet</p>
-            <p className="text-slate-400 text-sm mt-1">Connect accounts and schedule posts to see events here.</p>
+            <p className="text-slate-500">Aucune activité pour le moment</p>
+            <p className="text-slate-400 text-sm mt-1">Connectez des comptes et planifiez des messages pour voir les événements ici.</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-50">
@@ -100,7 +100,7 @@ const Dashboard = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600">Published</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600">Publié</span>
                     <span className="text-xs text-slate-400 shrink-0">{new Date(activity.createdAt).toLocaleString()}</span>
                   </div>
                     <p className="text-sm text-slate-600">{activity.description}</p>

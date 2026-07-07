@@ -16,8 +16,8 @@ const PlatformPickerModal = ({connectedIds, connecting, onClose, onConnect} : Pl
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-100">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 shadow">
-                <h3 className="text-slate-700">Choose a Platform</h3>
-                <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+                <h3 className="text-slate-700">Choisir une plateforme</h3>
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors cursor-pointer">
                     <XIcon className="size-4" />
                 </button>
             </div>
@@ -44,7 +44,7 @@ const PlatformPickerModal = ({connectedIds, connecting, onClose, onConnect} : Pl
                                     {p.name}
                                 </div>
                                 <div className="text-xs text-slate-500 truncate">
-                                    {isConnected ? "Already connected" : p.description}
+                                    {isConnected ? "Déjà connecté" : p.description}
                                 </div>
                             </div>
 

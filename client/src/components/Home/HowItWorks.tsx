@@ -1,9 +1,9 @@
 import { ArrowRightIcon, CheckCircleIcon } from "lucide-react";
 
 const steps = [
-    { step: "01", title: "Connect Your Accounts", description: "Link your social profiles in seconds. We support Twitter, LinkedIn, Facebook, and Instagram." },
-    { step: "02", title: "Create or Generate Content", description: "Write your own post or let our AI craft a caption and image based on your prompt." },
-    { step: "03", title: "Schedule & Publish", description: "Pick a time, select your platforms, and hit schedule. We handle publishing automatically." },
+    { step: "01", title: "Connectez vos comptes", description: "Associez vos profils sociaux en quelques secondes. Nous prenons en charge Twitter, LinkedIn, Facebook et Instagram." },
+    { step: "02", title: "Créez ou générez du contenu", description: "Rédigez votre propre message ou laissez notre IA concevoir une légende et une image en fonction de vos idées." },
+    { step: "03", title: "Planifiez et publiez", description: "Choisissez une heure, sélectionnez vos plateformes et cliquez sur planifier. Nous nous occupons de la publication automatiquement." },
 ];
 
 export default function HowItWorks() {
@@ -12,13 +12,13 @@ export default function HowItWorks() {
             <div className="max-w-4xl mx-auto px-4 sm:px-6">
                 <div className="text-center mb-16">
                     <div className="mb-6 inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/15 text-red-500 text-[11px] font-medium tracking-[0.06em] uppercase px-3.5 py-1.5 rounded-full">
-                        <CheckCircleIcon className="size-3" />
-                        Simple setup
+                         <CheckCircleIcon className="size-3" />
+                         Configuration simple
                     </div>
                     <h2 className="font-serif font-medium text-4xl sm:text-5xl leading-tight text-gray-900">
-                        Up and running in <span className="text-red-400 italic">minutes</span>
+                        Prêt et opérationnel en <span className="text-red-400 italic">quelques minutes</span>
                     </h2>
-                    <p className="mt-5 text-gray-500 max-w-lg mx-auto leading-relaxed">No complicated onboarding, no steep learning curve. Just connect, create, and grow.</p>
+                    <p className="mt-5 text-gray-500 max-w-lg mx-auto leading-relaxed">Pas d'intégration compliquée, pas d'apprentissage fastidieux. Connectez-vous, créez et grandissez.</p>
                 </div>
 
                 <div className="space-y-6">

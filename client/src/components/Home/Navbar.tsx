@@ -17,36 +17,36 @@ export default function Navbar() {
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm text-slate-500">
           <a href="#features" className="hover:text-slate-900">
-            Features
+            Fonctionnalités
           </a>
           <a href="#how-it-works" className="hover:text-slate-900">
-            How it works
+            Comment ça marche
           </a>
           <a href="#pricing" className="hover:text-slate-900">
-            Pricing
+            Tarifs
           </a>
         </div>
 
         {user ? (
           <Link
             to="/dashboard"
-            className="flex items-center gap-1.5 text-sm font-medium bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full shadow-sm hover:shadow-red-200 hover:shadow-md"
+            className="flex items-center gap-1.5 text-sm font-medium bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full shadow-sm hover:shadow-red-200 hover:shadow-md cursor-pointer"
           >
-            Go to Dashboard <ArrowRightIcon className="size-3.5" />
+            Accéder au tableau de bord <ArrowRightIcon className="size-3.5" />
           </Link>
         ) : (
           <div className="flex items-center gap-3">
             <Link
               to="/login"
-              className="text-sm text-slate-600 hover:text-slate-900 hidden sm:block"
+              className="text-sm text-slate-600 hover:text-slate-900 hidden sm:block cursor-pointer"
             >
-              Sign In
+              Se connecter
             </Link>
             <Link
               to="/login"
-              className="flex items-center gap-1.5 text-sm bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full shadow-sm hover:shadow-red-200 hover:shadow-md"
+              className="flex items-center gap-1.5 text-sm bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full shadow-sm hover:shadow-red-200 hover:shadow-md cursor-pointer"
             >
-              Get Started <ArrowRightIcon className="size-3.5" />
+              Démarrer <ArrowRightIcon className="size-3.5" />
             </Link>
           </div>
         )}

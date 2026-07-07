@@ -9,7 +9,7 @@ interface AccountListProps {
 const AccountList = ({accounts, onDisconnect}: AccountListProps ) => {
 
     const handleDisconnect = async (accountId: string) => {
-        const confirm = window.confirm("Are you sure you want to disconnect this account?");
+        const confirm = window.confirm("Êtes-vous sûr de vouloir déconnecter ce compte ?");
         if(!confirm) return;
         await onDisconnect(accountId)
     }
@@ -20,8 +20,8 @@ const AccountList = ({accounts, onDisconnect}: AccountListProps ) => {
                 <div className="size-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 border border-slate-100">
                     <PlusIcon className="size-6 text-slate-500 opacity-50"/>
                 </div>
-                <p className="text-slate-700 text-lg">No accounts connected</p>
-                <p className="text-sm text-slate-400 mt-1 max-w-xs text-center">Connect your first social platform to start scheduling and automating your content.</p>
+                <p className="text-slate-700 text-lg">Aucun compte connecté</p>
+                <p className="text-sm text-slate-400 mt-1 max-w-xs text-center">Connectez votre première plateforme sociale pour commencer à planifier et automatiser votre contenu.</p>
             </div>
         )
     }
@@ -48,21 +48,21 @@ const AccountList = ({accounts, onDisconnect}: AccountListProps ) => {
                         {account.status === 'connected' ? (
                             <>
                                 <CheckCircleIcon className="size-4 text-emerald-500" />
-                                <span className="text-xs text-emerald-600">Connected</span>
+                                <span className="text-xs text-emerald-600">Connecté</span>
                             </>
                         ): (
                             <>
                                 <AlertCircleIcon className="size-4 text-amber-500"/>
-                                <span className="text-xs text-amber-600">Disconnected</span>
+                                <span className="text-xs text-amber-600">Déconnecté</span>
                             </>
                         )}
 
                     </div>
 
                     <button 
-                    onClick={()=> handleDisconnect(account._id)}
-                    title="Disconnect account"
-                    className="ml-2 p-1.5 rounded-lg text-slate-300 group-hover:text-red-500 transition-all">
+                     onClick={()=> handleDisconnect(account._id)}
+                     title="Déconnecter le compte"
+                     className="ml-2 p-1.5 rounded-lg text-slate-300 group-hover:text-red-500 transition-all cursor-pointer">
                         <UnplugIcon className="size-4"/>
                     </button>
 
