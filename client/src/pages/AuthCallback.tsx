@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
@@ -7,8 +7,12 @@ import api from "../api/axios";
 export default function AuthCallback() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const hasRun = useRef(false);
 
   useEffect(() => {
+    if (hasRun.current) return;
+    hasRun.current = true;
+
     const token = new URLSearchParams(window.location.search).get("token");
     if (!token) { navigate("/login?error=oauth_failed"); return; }
 
