@@ -93,7 +93,7 @@ const Scheduler = () => {
                     const active = selectedPlatforms.includes(p.id);
                     return (
                       <button key={p.id} type="button" onClick={()=> togglePlatform(p.id)}
-                      className={`flex items-center gap-1.5 p-3 rounded-md border transition-all duration-150 cursor-pointer ${active ? "bg-red-50 border-red-300 text-red-500 scale-103" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                      className={`flex items-center gap-1.5 p-3 rounded-md border transition-all duration-150 cursor-pointer ${active ? "bg-primary-50 border-primary-300 text-primary-500 scale-103" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
                         <p.icon className="size-4.5" />
                       </button>
                     )
@@ -126,8 +126,8 @@ const Scheduler = () => {
                     </button>
                   </div>
                 ) : (
-                  <label className="flex items-center justify-center gap-2 p-5 py-10 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-all group">
-                    <span className="text-sm text-slate-500 group-hover:text-red-600 transition-colors">Cliquez pour importer une image ou une vidéo</span>
+                  <label className="flex items-center justify-center gap-2 p-5 py-10 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-primary-300 hover:bg-primary-50/30 transition-all group">
+                    <span className="text-sm text-slate-500 group-hover:text-primary-600 transition-colors">Cliquez pour importer une image ou une vidéo</span>
                     <input type="file" accept="image/*,video/*" className="hidden" onChange={(e)=>e.target.files?.[0] && setMediaFile(e.target.files[0])}/>
                   </label>
                 )}
@@ -153,7 +153,7 @@ const Scheduler = () => {
               </div>
 
               {/* Submit */}
-              <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-3.5 bg-red-500 hover:bg-red-600 transition-all text-white rounded-lg cursor-pointer">
+              <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary-500 hover:bg-primary-600 transition-all text-white rounded-lg cursor-pointer">
                 {loading ? (
                   <>
                     <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

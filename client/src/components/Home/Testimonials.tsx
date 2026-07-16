@@ -5,7 +5,7 @@ const testimonials = [
         name: "Sarah K.",
         role: "Responsable Marketing",
         avatar: "S",
-        avatarBg: "from-red-400 to-pink-400",
+        avatarBg: "from-primary-400 to-emerald-400",
         text: "Scheduler a fait gagner plus de 10 heures par semaine à notre équipe. Le compositeur IA est vraiment impressionnant — il écrit du contenu qui nous ressemble.",
     },
     {
@@ -29,12 +29,12 @@ export default function Testimonials() {
         <section className="py-24 bg-slate-50">
             <div className="max-w-6xl mx-auto px-4 sm:px-6">
                 <div className="text-center mb-14">
-                    <div className="mb-6 inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/15 text-red-500 text-[11px] font-medium tracking-[0.06em] uppercase px-3.5 py-1.5 rounded-full">
+                    <div className="mb-6 inline-flex items-center gap-1.5 bg-primary-500/10 border border-primary-500/15 text-primary-500 text-[11px] font-medium tracking-[0.06em] uppercase px-3.5 py-1.5 rounded-full">
                         <StarIcon className="size-3 " />
                         Témoignages
                     </div>
                     <h2 className="font-serif font-medium text-4xl sm:text-5xl leading-tight text-gray-900">
-                        Aimé par les <span className="text-red-400 ">créateurs &amp; équipes</span>
+                        Aimé par les <span className="text-primary-500 ">créateurs &amp; équipes</span>
                     </h2>
                     <p className="mt-5 text-gray-500 max-w-md mx-auto">Rejoignez des milliers de personnes qui automatisent leurs réseaux sociaux avec Scheduler.</p>
                 </div>

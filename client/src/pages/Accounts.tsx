@@ -85,7 +85,7 @@ const Accounts = () => {
           <h2 className="text-xl text-slate-900">Comptes connectés</h2>
           <p className="text-slate-500 text-sm mt-0.5">{accounts.length} sur {PLATFORMS.length} plateformes connectées</p>
         </div>
-        <button onClick={()=> setShowPlatformPicker(true)} className="flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full font-medium transition-all w-full sm:w-auto justify-center cursor-pointer">
+        <button onClick={()=> setShowPlatformPicker(true)} className="flex items-center gap-2 px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-full font-medium transition-all w-full sm:w-auto justify-center cursor-pointer">
           <PlusIcon className="size-4" /> Connecter un compte
         </button>
       </div>

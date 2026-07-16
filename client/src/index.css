@@ -12,12 +12,34 @@
   src: url("./assets/fonts/Gilroy-Regular.ttf") format("truetype");
   font-weight: 400;
 }
+@font-face {
+  font-display: swap;
+  font-family: "Open Sauce Sans";
+  src: url("./assets/fonts/open-sauce.sans-regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
 
 @theme {
   --color-bg: #fafafa;
   --color-text: #111111;
   --font-sans: "Gilroy", sans-serif;
-  --font-serif: "PolySans", serif;
+  --font-serif: "Open Sauce Sans", sans-serif;
+
+  --color-primary-50: #E6FFF8;
+  --color-primary-100: #c9f9ec;
+  --color-primary-200: #93f3d7;
+  --color-primary-300: #5bf0c8;
+  --color-primary-400: #01C847;
+  --color-primary-500: #01AF3E;
+  --color-primary-600: #009434;
+  --color-primary-700: #007a2a;
+}
+
+.font-serif {
+  font-family: var(--font-serif) !important;
+  font-weight: bold !important;
+  line-height: 1.05 !important;
 }
 
 * {

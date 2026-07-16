@@ -72,7 +72,7 @@ export default function Login() {
                             </div>
                         </div>
 
-                        <button type="submit" disabled={loading} className="w-full py-2.5 px-4 bg-linear-to-r from-red-600 to-red-500 text-white rounded-full text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer">
+                        <button type="submit" disabled={loading} className="w-full py-2.5 px-4 bg-linear-to-r from-primary-600 to-primary-500 text-white rounded-full text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer">
                             {loading ? (
                                 loginState ? "Connexion..." : "Inscription..."
                             ) : (
@@ -119,14 +119,14 @@ export default function Login() {
                         {loginState ? (
                             <>
                                 Vous n'avez pas de compte ?{" "}
-                                <button onClick={() => setLoginState(false)} className="text-red-600 hover:text-red-700 cursor-pointer">
+                                <button onClick={() => setLoginState(false)} className="text-primary-600 hover:text-primary-700 cursor-pointer">
                                     Créez-en un gratuitement
                                 </button>
                             </>
                         ) : (
                             <>
                                 Vous avez déjà un compte ?{" "}
-                                <button onClick={() => setLoginState(true)} className="text-red-600 hover:text-red-700 cursor-pointer">
+                                <button onClick={() => setLoginState(true)} className="text-primary-600 hover:text-primary-700 cursor-pointer">
                                     Se connecter
                                 </button>
                             </>

@@ -30,7 +30,7 @@ export default function Navbar() {
         {user ? (
           <Link
             to="/dashboard"
-            className="flex items-center gap-1.5 text-sm font-medium bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full shadow-sm hover:shadow-red-200 hover:shadow-md cursor-pointer"
+            className="flex items-center gap-1.5 text-sm font-medium bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-full shadow-sm hover:shadow-primary-100 hover:shadow-md cursor-pointer"
           >
             Accéder au tableau de bord <ArrowRightIcon className="size-3.5" />
           </Link>
@@ -44,7 +44,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/login"
-              className="flex items-center gap-1.5 text-sm bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full shadow-sm hover:shadow-red-200 hover:shadow-md cursor-pointer"
+              className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-full shadow-sm hover:shadow-primary-100 hover:shadow-md cursor-pointer"
             >
               Démarrer <ArrowRightIcon className="size-3.5" />
             </Link>

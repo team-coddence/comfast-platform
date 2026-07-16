@@ -104,9 +104,9 @@ const AIComposer = () => {
           placeholder="Partagez votre idée... (ex: Un message sur le lancement de nos nouveaux grains de café éco-responsables)" value={prompt} onChange={(e)=> setPrompt(e.target.value)}/>
           <div className="absolute bottom-4 right-2.5 flex items-center gap-3 text-sm">
 
-            <button onClick={()=> setGenerateImage(!generateImage)} className="flex items-center gap-3 bg-red-50 py-2 px-3 rounded-lg cursor-pointer">
+            <button onClick={()=> setGenerateImage(!generateImage)} className="flex items-center gap-3 bg-primary-50 py-2 px-3 rounded-lg cursor-pointer">
               <span>Image IA</span>
-              <div className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${generateImage ? "bg-red-500" : "bg-slate-200"}`}>
+              <div className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${generateImage ? "bg-primary-500" : "bg-slate-200"}`}>
                 <span className={`pointer-events-none size-4 transform translate-y-0.5 rounded-full bg-white transition ${generateImage ? "translate-x-4.5" : "translate-x-0.5"}`}/>
               </div>
             </button>
@@ -130,7 +130,7 @@ const AIComposer = () => {
 
         <div className="flex flex-wrap justify-center gap-2">
               {tones.map((t)=>(
-                <button key={t.id} onClick={()=> setTone(t.id) } className={`px-4 py-1.5 rounded-full text-sm transition-all border cursor-pointer ${tone === t.id ? "bg-red-500 border-red-500 text-white" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"}`}>
+                <button key={t.id} onClick={()=> setTone(t.id) } className={`px-4 py-1.5 rounded-full text-sm transition-all border cursor-pointer ${tone === t.id ? "bg-primary-500 border-primary-500 text-white" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"}`}>
                   {t.label}
                 </button>
               ))}
@@ -149,12 +149,12 @@ const AIComposer = () => {
 
            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {generations.map((gen)=>(
-                <div key={gen._id} className="group bg-white rounded-2xl border border-slate-100 p-5 hover:border-red-200 transition-all relative overflow-hidden">
+                <div key={gen._id} className="group bg-white rounded-2xl border border-slate-100 p-5 hover:border-primary-200 transition-all relative overflow-hidden">
                   <div className="flex flex-col h-full space-y-4">
 
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-400 uppercase tracking-widest">{new Date(gen.createdAt).toLocaleString()}</span>
-                      <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-md">
+                      <span className="text-xs text-primary-500 bg-primary-50 px-2 py-0.5 rounded-md">
                         {tones.find((t)=>t.id === gen.tone)?.label || gen.tone}
                       </span>
                     </div>
@@ -170,7 +170,7 @@ const AIComposer = () => {
                     <div className="flex items-center gap-2 pt-2">
                       <button 
                       onClick={()=> setActiveScheduler(gen)}
-                      className="flex-1 bg-slate-100 hover:bg-red-500 hover:text-white text-slate-600 text-xs py-2.5 rounded-lg transition-all cursor-pointer">
+                      className="flex-1 bg-slate-100 hover:bg-primary-500 hover:text-white text-slate-600 text-xs py-2.5 rounded-lg transition-all cursor-pointer">
                         Planifier le message
                       </button>
                     </div>
@@ -224,7 +224,7 @@ const AIComposer = () => {
                       const active = selectedPlatforms.includes(p.id);
                       return (
                         <button key={p.id} onClick={()=> setSelectedPlatforms((prev)=> (prev.includes(p.id) ? prev.filter((x)=>x !== p.id) : [...prev, p.id]))}
-                        className={`p-2.5 rounded-md border text-xs cursor-pointer ${active ? "bg-red-500/80 text-white" : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"}`}>
+                        className={`p-2.5 rounded-md border text-xs cursor-pointer ${active ? "bg-primary-500/80 text-white" : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"}`}>
                           <p.icon className="size-4.5"/>
                         </button>
                       )
@@ -243,7 +243,7 @@ const AIComposer = () => {
                   </div>
                 </div>
               </div>
-              <button onClick={handleSchedule} className="w-full flex items-center justify-center gap-2 py-3 rounded-md bg-slate-200 text-slate-700 hover:bg-red-500 hover:text-white transition cursor-pointer">
+              <button onClick={handleSchedule} className="w-full flex items-center justify-center gap-2 py-3 rounded-md bg-slate-200 text-slate-700 hover:bg-primary-500 hover:text-white transition cursor-pointer">
                 {scheduling ? <Loader2Icon className="size-4 animate-spin"/> : <TimerIcon className="size-4"/>}
                  Planifier le message
               </button>

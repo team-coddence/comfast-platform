@@ -7,29 +7,29 @@ export default function Hero() {
             {/* Subtle grid */}
             <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)] bg-size-[56px_56px] pointer-events-none" />
 
-            {/* Red soft glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[560px] bg-[radial-gradient(ellipse_at_center,rgba(239,68,68,0.08)_0%,transparent_70%)] pointer-events-none" />
+            {/* Green soft glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-225 h-140 bg-[radial-gradient(ellipse_at_center,rgba(1,175,62,0.08)_0%,transparent_70%)] pointer-events-none" />
 
             <div className="relative max-w-6xl mx-auto px-5 sm:px-8 pt-20 pb-12 text-center">
                 {/* Badge */}
-                <div className="inline-flex items-center gap-2 bg-red-50 border border-red-100 text-red-500 text-sm px-3.5 py-1.5 rounded-full mb-8">
-                    <span className="size-1.5 bg-red-400 rounded-full" />
+                <div className="inline-flex items-center gap-2 bg-primary-50 border border-primary-100 text-primary-500 text-sm px-3.5 py-1.5 rounded-full mb-8">
+                    <span className="size-1.5 bg-primary-400 rounded-full" />
                     Automatisation des réseaux sociaux par l'IA
                 </div>
 
                 {/* Headline */}
-                <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl xl:text-8xl text-slate-900">
-                    Planifiez plus intelligemment.
+                <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl xl:text-7xl text-slate-900">
+                    Une seule plateforme pour piloter toute votre stratégie
                     <br />
-                    <span className="text-red-400 italic">Grandissez plus vite.</span>
+                    <span className="text-primary-500 italic">social media.</span>
                 </h1>
 
                 {/* Subheadline */}
-                <p className="mt-7 text-gray-500 max-w-2xl mx-auto">Scheduler vous permet de créer, planifier et interagir automatiquement sur toutes vos plateformes sociales — propulsé par une IA qui écrit vos légendes et répond à vos commentaires pour vous.</p>
+                <p className="mt-7 text-gray-500 max-w-2xl mx-auto">Comfast vous permet de créer, planifier et interagir automatiquement sur toutes vos plateformes sociales — propulsé par une IA qui écrit vos légendes et répond à vos commentaires pour vous.</p>
 
                 {/* CTAs */}
                 <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <Link to="/login" className="bg-red-500 text-white rounded-full font-medium hover:bg-red-600 hover:shadow-[0_8px_24px_rgba(239,68,68,0.35)] inline-flex items-center gap-2 text-[15px] px-8 py-3.5 w-full sm:w-auto justify-center transition-all cursor-pointer">
+                    <Link to="/login" className="bg-primary-500 text-white rounded-full font-medium hover:bg-primary-600 hover:shadow-[0_8px_24px_rgba(1,175,62,0.25)] inline-flex items-center gap-2 text-[15px] px-8 py-3.5 w-full sm:w-auto justify-center transition-all cursor-pointer">
                         Commencer gratuitement <ArrowRightIcon className="size-4" />
                     </Link>
                     <a href="#how-it-works" className="bg-transparent text-[#333] border-[1.5px] border-black/10 rounded-full font-medium hover:bg-black/5 hover:border-black/20 inline-flex items-center gap-2 text-[15px] px-8 py-3.5 w-full sm:w-auto backdrop-blur justify-center transition-all cursor-pointer">
