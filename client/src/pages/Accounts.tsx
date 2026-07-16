@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { PLATFORMS } from "../assets/assets"
-import { PlusIcon } from "lucide-react"
+import { PlusIcon, RefreshCwIcon } from "lucide-react"
 import AccountList from "../components/AccountList"
 import PlatformPickerModal from "../components/PlatformPickerModal"
 import toast from "react-hot-toast"
@@ -12,6 +12,7 @@ const Accounts = () => {
   const [accounts, setAccounts] = useState<any[]>([])
   const [connecting, setConnecting] = useState<string | null>(null)
   const [showPlatformPicker, setShowPlatformPicker] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   const fetchAccounts = async (isSync = false, platform?: string | null, successMsg?: string) => {
     try {
@@ -62,6 +63,15 @@ const Accounts = () => {
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error?.message || `Impossible de connecter ${platformId}`)
       setConnecting(null)
+    }
+  }
+
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      await fetchAccounts(true, null, "Accounts synced!")
+    } finally {
+      setSyncing(false)
     }
   }
 

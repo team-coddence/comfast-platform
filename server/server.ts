@@ -8,6 +8,8 @@ import accountRouter from "./routes/accountRoutes.js";
 import postRouter from "./routes/postRoutes.js";
 import activityRouter from "./routes/activityRoutes.js";
 import { initScheduler } from "./services/schedulerService.js";
+import passport from "./config/passport.js";
+import socialLoginRouter from "./routes/socialLoginRoutes.js";
 
 const app = express();
 
@@ -17,6 +19,7 @@ await connectDB()
 // Middleware
 app.use(cors())
 app.use(express.json());
+app.use(passport.initialize());
 
 const port = process.env.PORT || 3000;
 
@@ -24,6 +27,7 @@ app.get('/', (_req: Request, res: Response) => {
     res.send('Server is Live!');
 });
 
+app.use("/api/auth/oauth", socialLoginRouter)
 app.use("/api/auth", authRouter)
 app.use("/api/oauth", socialAuthRouter)
 app.use("/api/accounts", accountRouter)

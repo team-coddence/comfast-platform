@@ -49,6 +49,10 @@ const Scheduler = () => {
       toast.error("Instagram nécessite une image ou une vidéo");
       return;
     }
+    if(selectedPlatforms.includes('tiktok') && !mediaFile){
+      toast.error("TikTok requires a video or image");
+      return;
+    }
 
     const scheduledFor = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
     const formData = new FormData();
