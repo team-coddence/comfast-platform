@@ -26,7 +26,11 @@ const Accounts = () => {
       const {data} = await api.get("/api/accounts")
       setAccounts(data)
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.message || "Failed to load accounts");
+      if (error?.response?.data?.code === "PAYMENT_REQUIRED") {
+        toast.error(error.response.data.message, { duration: 8000 });
+      } else {
+        toast.error(error?.response?.data?.message || error?.message || "Failed to load accounts");
+      }
     }
   }
 
@@ -61,7 +65,11 @@ const Accounts = () => {
       const { data } = await api.get(`/api/oauth/${platformId}/url`);
       window.location.href = data.url;
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.message || `Failed to connect ${platformId}`)
+      if (error?.response?.data?.code === "PAYMENT_REQUIRED") {
+        toast.error(error.response.data.message, { duration: 8000 });
+      } else {
+        toast.error(error?.response?.data?.message || error?.message || `Failed to connect ${platformId}`)
+      }
       setConnecting(null)
     }
   }
