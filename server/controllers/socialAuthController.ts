@@ -4,17 +4,29 @@ import { User } from "../models/User.js";
 import { Account } from "../models/Account.js";
 import { AuthRequest } from "../middlewares/authMiddlewware.js";
 
+// Detects Zernio's "add a payment method" billing block (e.g. X/Twitter pass-through costs)
+const isPaymentRequiredError = (error: any): boolean => {
+    const status = error?.status || error?.response?.status || error?.statusCode;
+    const message = (error?.message || error?.response?.data?.message || "").toLowerCase();
+    return status === 402 || /payment method|billing|pass-?through cost/.test(message);
+}
+
+const respondWithZernioError = (res: Response, error: any) => {
+    if (isPaymentRequiredError(error)) {
+        res.status(402).json({
+            code: "PAYMENT_REQUIRED",
+            message: "This platform requires a payment method on your Zernio account before you can connect it. Add one in your Zernio dashboard, then try again."
+        });
+        return;
+    }
+    res.status(500).json({ message: error?.message || "Server error" });
+}
+
 // Helper to ensure user has a Zernio Profile.
 const getOrCreateZernioProfile = async (user:any) : Promise<string> => {
     try {
-       const result = await zernio.profiles.listProfiles()
-       const data = result.data as any;
-       const profiles: any[] = Array.isArray(data) ? data : data?.profiles || data?.data || [];
-
-       if(profiles.length > 0){
-        const pid = profiles[0]._id || profiles[0].id
-        await User.findByIdAndUpdate(user._id, {zernioProfileId: pid})
-        return pid;
+       if(user.zernioProfileId){
+        return user.zernioProfileId;
        }
 
        const createResult = await zernio.profiles.createProfile({
@@ -66,7 +78,7 @@ export const generateAuthUrl = async (req: AuthRequest, res: Response) : Promise
         res.json({url: authUrl})
 
     } catch (error: any) {
-        res.status(500).json({ message: error?.message || "Server error"})
+        respondWithZernioError(res, error);
     }
 }
 
@@ -100,7 +112,7 @@ export const syncAccounts = async (req: AuthRequest, res: Response) : Promise<vo
             }
 
             const account = await Account.findOneAndUpdate(
-                {zernioAccountId: zid},
+                {zernioAccountId: zid, user: req.user._id},
                 {
                     user: req.user._id,
                     platform: normalizedPlatform,
@@ -115,6 +127,6 @@ export const syncAccounts = async (req: AuthRequest, res: Response) : Promise<vo
         }
         res.json(syncedAccounts)
     } catch (error: any) {
-        res.status(500).json({ message: error?.message || "Server error" });
+        respondWithZernioError(res, error);
     }
 }

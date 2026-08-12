@@ -1,0 +1,16 @@
+name: comfast
+services:
+  comfast-db:
+    image: mongo:latest
+    container_name: comfast-db
+    restart: unless-stopped
+    ports:
+      - "27097:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: unipostadmin
+      MONGO_INITDB_ROOT_PASSWORD: 123456789
+    volumes:
+      - comfast_db_data:/data/db
+
+volumes:
+  comfast_db_data:
