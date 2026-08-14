@@ -3,6 +3,7 @@ import zernio from "../config/zernio.js";
 import { User } from "../models/User.js";
 import { Account } from "../models/Account.js";
 import { AuthRequest } from "../middlewares/authMiddlewware.js";
+import { getEnabledPlatforms, isPlatformEnabled } from "../config/platforms.js";
 
 // Detects Zernio's "add a payment method" billing block (e.g. X/Twitter pass-through costs)
 const isPaymentRequiredError = (error: any): boolean => {
@@ -54,6 +55,12 @@ const getOrCreateZernioProfile = async (user:any) : Promise<string> => {
 export const generateAuthUrl = async (req: AuthRequest, res: Response) : Promise<void>=> {
     try {
         const {platform} = req.params;
+
+        if(!isPlatformEnabled(String(platform))){
+            res.status(403).json({ message: `${platform} is not currently enabled` });
+            return;
+        }
+
         const profileId = await getOrCreateZernioProfile(req.user);
 
         const origin = req.headers.origin;
@@ -93,7 +100,7 @@ export const syncAccounts = async (req: AuthRequest, res: Response) : Promise<vo
 
         const data = result.data as any;
         const zernioAccounts: any[] = data?.accounts || (Array.isArray(data) ? data : []);
-        const supportedPlatforms = ["twitter", "linkedin", "facebook", "instagram", "tiktok"];
+        const supportedPlatforms = getEnabledPlatforms();
         const syncedAccounts = [];
 
         for(const zAccount of zernioAccounts){

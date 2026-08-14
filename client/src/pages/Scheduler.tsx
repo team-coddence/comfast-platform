@@ -3,10 +3,12 @@ import { PLATFORMS } from "../assets/assets";
 import { ArrowRightIcon, CalendarDaysIcon, CalendarIcon, ClockIcon, SendIcon, XIcon } from "lucide-react";
 import api from "../api/axios";
 import toast from "react-hot-toast";
+import { useEnabledPlatforms } from "../hooks/useEnabledPlatforms";
 
 
 const Scheduler = () => {
 
+  const enabledPlatforms = useEnabledPlatforms();
   const [posts, setPosts] = useState<any[]>([]);
   const [content, setContent] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
@@ -93,7 +95,7 @@ const Scheduler = () => {
               <div>
                 <label className="block text-xs text-slate-500 uppercase mb-2">Platforms</label>
                 <div className="flex flex-wrap gap-3">
-                  {PLATFORMS.map((p)=>{
+                  {enabledPlatforms.map((p)=>{
                     const active = selectedPlatforms.includes(p.id);
                     return (
                       <button key={p.id} type="button" onClick={()=> togglePlatform(p.id)}
