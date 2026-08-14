@@ -12,4 +12,6 @@ const accountSchema = new mongoose.Schema({
     avatarUrl: { type: String },
 }, {timestamps: true})
 
+accountSchema.index({ zernioAccountId: 1, user: 1 }, { unique: true, partialFilterExpression: { zernioAccountId: { $type: "string" } } })
+
 export const Account = mongoose.model("Account", accountSchema)
