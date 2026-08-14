@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react"
-import { PLATFORMS } from "../assets/assets"
 import { PlusIcon, RefreshCwIcon } from "lucide-react"
 import AccountList from "../components/AccountList"
 import PlatformPickerModal from "../components/PlatformPickerModal"
 import toast from "react-hot-toast"
 import api from "../api/axios"
+import { useEnabledPlatforms } from "../hooks/useEnabledPlatforms"
 
 
 const Accounts = () => {
 
+  const enabledPlatforms = useEnabledPlatforms()
   const [accounts, setAccounts] = useState<any[]>([])
   const [connecting, setConnecting] = useState<string | null>(null)
   const [showPlatformPicker, setShowPlatformPicker] = useState(false)
@@ -101,7 +102,7 @@ const Accounts = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-sm">
         <div>
           <h2 className="text-xl text-slate-900">Connected Accounts</h2>
-          <p className="text-slate-500 text-sm mt-0.5">{accounts.length} of {PLATFORMS.length} platforms connected</p>
+          <p className="text-slate-500 text-sm mt-0.5">{accounts.length} of {enabledPlatforms.length} platforms connected</p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <button onClick={handleSync} disabled={syncing} title="Pull in accounts connected via the Zernio dashboard" className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 rounded-full font-medium transition-all disabled:opacity-60">
@@ -114,7 +115,7 @@ const Accounts = () => {
       </div>
 
       {/* Platform picker modal */}
-      {showPlatformPicker && <PlatformPickerModal connectedIds={connectedIds} connecting={connecting} onClose={()=> setShowPlatformPicker(false)} onConnect={handleConnect}/>}
+      {showPlatformPicker && <PlatformPickerModal platforms={enabledPlatforms} connectedIds={connectedIds} connecting={connecting} onClose={()=> setShowPlatformPicker(false)} onConnect={handleConnect}/>}
 
       {/* Connected accounts list */}
       <AccountList accounts={accounts} onDisconnect={handleDisconnect}/>

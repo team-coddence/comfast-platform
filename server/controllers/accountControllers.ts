@@ -2,13 +2,19 @@ import { Response } from "express";
 import { AuthRequest } from "../middlewares/authMiddlewware.js";
 import { Account } from "../models/Account.js";
 import zernio from "../config/zernio.js";
+import { getEnabledPlatforms } from "../config/platforms.js";
 
+// Get platforms enabled for this deployment
+// GET /api/accounts/platforms
+export const getPlatforms = async (_req: AuthRequest, res: Response) : Promise<void> => {
+    res.json({ platforms: getEnabledPlatforms() })
+}
 
 // Get all accounts
 // GET /api/accounts
 export const getAccounts = async (req: AuthRequest, res: Response) : Promise<void> =>{
     try {
-        const accounts = await Account.find({user: req.user._id })
+        const accounts = await Account.find({user: req.user._id, platform: {$in: getEnabledPlatforms()} })
         res.json(accounts)
     } catch (error: any) {
         res.status(500).json({ message: error?.message || "Server error" });
@@ -20,6 +26,11 @@ export const getAccounts = async (req: AuthRequest, res: Response) : Promise<voi
 export const addAccount = async (req: AuthRequest, res: Response) : Promise<void> =>{
     try {
         const {platform, handle, avatarUrl} = req.body;
+
+        if(!getEnabledPlatforms().includes(platform)){
+            res.status(403).json({ message: `${platform} is not currently enabled` });
+            return;
+        }
 
         const account = await Account.create({user: req.user._id, platform, handle, avatarUrl });
         res.status(201).json(account)

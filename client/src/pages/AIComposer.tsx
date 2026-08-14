@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react"
-import { PLATFORMS } from "../assets/assets";
 import { ArrowRightIcon, CalendarIcon, ClockIcon, HistoryIcon, Loader2Icon, TimerIcon, Wand2Icon, XIcon } from "lucide-react";
 import api from "../api/axios";
 import toast from "react-hot-toast";
+import { useEnabledPlatforms } from "../hooks/useEnabledPlatforms";
 
 
 const AIComposer = () => {
 
+  const enabledPlatforms = useEnabledPlatforms();
   const [prompt, setPrompt] = useState("");
   const [tone, setTone] = useState("Professional");
   const [generateImage, setGenerateImage] = useState(true);
@@ -212,7 +213,7 @@ const AIComposer = () => {
                 <div>
                   <label className="block text-xs text-slate-600 uppercase tracking-widest mb-4">Select Channels</label>
                   <div className="flex flex-wrap gap-2">
-                    {PLATFORMS.map((p)=>{
+                    {enabledPlatforms.map((p)=>{
                       const active = selectedPlatforms.includes(p.id);
                       return (
                         <button key={p.id} onClick={()=> setSelectedPlatforms((prev)=> (prev.includes(p.id) ? prev.filter((x)=>x !== p.id) : [...prev, p.id]))}
