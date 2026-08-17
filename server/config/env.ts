@@ -131,7 +131,15 @@ export interface ServiceStatus {
     values: Record<string, string>;
 }
 
-const read = (name: string): string => (process.env[name] ?? "").trim();
+// dotenv strips surrounding quotes from `FOO="bar"`; Docker's `env_file` and
+// `--env-file` do not, and pass the quote characters through as part of the
+// value. The same server/.env is used both ways, so normalise here — otherwise
+// a quoted API key authenticates as `"AIza..."` in the container and fails in
+// ways that look like a bad key rather than a parsing problem.
+const unquote = (value: string): string =>
+    /^(".*"|'.*')$/s.test(value) ? value.slice(1, -1) : value;
+
+const read = (name: string): string => unquote((process.env[name] ?? "").trim()).trim();
 
 const resolveService = (spec: ServiceSpec): ServiceStatus => {
     const problems: string[] = [];

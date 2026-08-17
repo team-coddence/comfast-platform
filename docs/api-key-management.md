@@ -125,6 +125,33 @@ The limiter is in-memory and per-process. If the API is ever run as more than on
 instance, replace it with a Redis-backed limiter — per-process counters let a
 caller get N requests *per instance*.
 
+## Running in Docker
+
+`docker compose up --build` starts the database and the API. The API image is
+built from `server/Dockerfile` — a multi-stage build whose runtime layer holds
+only production dependencies and compiled JavaScript, runs as the non-root
+`node` user, and has no TypeScript compiler in it.
+
+Four things about credentials differ under Docker, and each has bitten us:
+
+**1. `server/.env` is read two different ways.** Locally `dotenv` parses it;
+in compose it is passed through `env_file`, which does *not* strip surrounding
+quotes. `FOO="bar"` becomes a literal `"bar"` in the container. `config/env.ts`
+normalises this in its `read()` helper, so both paths agree — but prefer
+unquoted values.
+
+**2. The container runs with `NODE_ENV=production`,** which makes a weak
+`JWT_SECRET` fatal rather than a warning. A container that exits immediately
+with `[config] Cannot start` is this check doing its job, not a Docker problem.
+
+**3. `MONGODB_URI` is overridden in compose.** The value in `server/.env` points
+at `127.0.0.1:27097` for host-based development; inside the compose network the
+database is at `comfast-db:27017`. Compose rebuilds the URI from the root `.env`.
+
+**4. `MONGO_INITDB_ROOT_*` only applies to a brand-new volume.** Changing the
+password in `.env` does not re-key an existing database. Rotate with
+`db.changeUserPassword()` in `mongosh`, then update `.env` to match.
+
 ## Rotation runbook
 
 Rotate a key whenever it may have been exposed: committed to git, pasted into a

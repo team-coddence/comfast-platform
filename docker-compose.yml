@@ -1,7 +1,11 @@
 name: comfast
+
 services:
   comfast-db:
-    image: mongo:latest
+    # Pinned to the major.minor already running against the existing volume.
+    # `latest` would silently upgrade the engine on a `docker compose pull` and
+    # can leave data files a downgrade cannot read.
+    image: mongo:8.0
     container_name: comfast-db
     restart: unless-stopped
     ports:
@@ -16,6 +20,50 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in .env}
     volumes:
       - comfast_db_data:/data/db
+    healthcheck:
+      # Gates the API's startup below. `ping` is one of the few commands Mongo
+      # allows unauthenticated, so no credentials appear in `docker inspect`.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  comfast-api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: comfast-api:local
+    container_name: comfast-api
+    restart: unless-stopped
+    # Runs tini as PID 1. Node does not reap orphaned children or forward
+    # signals the way an init process does, so without this `docker stop` waits
+    # the full 10s timeout before killing the container.
+    init: true
+    depends_on:
+      comfast-db:
+        # Not just "started" — Mongo accepts TCP connections seconds before it
+        # can serve queries, and the API exits on a failed initial connection.
+        condition: service_healthy
+    env_file:
+      # All application secrets. Git-ignored; see server/.env.example.
+      - ./server/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Overrides whatever MONGODB_URI is in server/.env. That value points at
+      # 127.0.0.1:27097 for host-based development; inside the compose network
+      # the database is reachable by service name on its native port.
+      # authSource=admin because the root user lives in the admin database.
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@comfast-db:27017/${MONGO_DATABASE:-comfast}?authSource=admin
+    ports:
+      # Loopback-only, as with the database. Put a TLS-terminating reverse proxy
+      # in front of this before exposing it publicly.
+      - "127.0.0.1:3000:3000"
+    security_opt:
+      # Blocks privilege escalation via setuid binaries, so a compromised
+      # process cannot regain the root it was dropped from in the Dockerfile.
+      - no-new-privileges:true
 
 volumes:
   comfast_db_data:
