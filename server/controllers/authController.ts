@@ -2,10 +2,8 @@ import { Request, Response } from "express";
 import { User } from "../models/User.js";
 import bcrypt from 'bcrypt'
 import { generateToken } from "../utils/token.js";
-
-/*const generateToken = (id: string)=>{
-    return jwt.sign({id}, process.env.JWT_SECRET || "fallback_secret", {expiresIn: '30d'} );
-}*/
+import { createDefaultWorkspace, ensureWorkspaceForUser } from "../services/workspaceService.js";
+import { logError } from "../utils/redact.js";
 
 // Register user
 // POST /api/auth/register
@@ -23,7 +21,19 @@ export const registerUser = async (req:Request, res: Response): Promise<void> =>
         const user = await User.create({name, email, password: hashedPassword});
 
         if(user){
-            res.status(201).json({_id: user._id, name: user.name, email: user.email, token: generateToken(user._id.toString()) })
+            // Deliberately non-fatal. Returning 500 after User.create already
+            // succeeded would strand someone who can neither re-register (the
+            // email is unique) nor sign in. `resolveWorkspace` repairs the
+            // account on its first authenticated request.
+            let defaultWorkspaceId: string | undefined;
+            try {
+                const workspace = await createDefaultWorkspace(user);
+                defaultWorkspaceId = workspace._id.toString();
+            } catch (error) {
+                logError(`Default workspace creation failed for user ${user._id}`, error);
+            }
+
+            res.status(201).json({_id: user._id, name: user.name, email: user.email, defaultWorkspaceId, token: generateToken(user._id.toString()) })
         }else{
             res.status(400).json({message: "Invalid user data"})
         }
@@ -40,8 +50,21 @@ export const loginUser = async (req:Request, res: Response): Promise<void> => {
 
         const user = await User.findOne({email})
 
-        if(user && (await bcrypt.compare(password, user.password))){
-            res.json({_id: user._id, name: user.name, email: user.email, token: generateToken(user._id.toString()) })
+        // Accounts created through Google sign-in have no password hash.
+        // Without this guard bcrypt.compare is called with undefined and
+        // throws, turning a routine bad login into a 500.
+        if(user?.password && (await bcrypt.compare(password, user.password))){
+            // A bootstrap hint so the client can pick an active workspace
+            // without a round trip. GET /api/workspaces stays authoritative.
+            let defaultWorkspaceId: string | undefined;
+            try {
+                const workspace = await ensureWorkspaceForUser(user);
+                defaultWorkspaceId = workspace._id.toString();
+            } catch (error) {
+                logError(`Workspace resolution failed for user ${user._id}`, error);
+            }
+
+            res.json({_id: user._id, name: user.name, email: user.email, defaultWorkspaceId, token: generateToken(user._id.toString()) })
         }else{
             res.status(401).json({message: "Invalid email or password"})
         }

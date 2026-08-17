@@ -1,10 +1,12 @@
 import { Response } from "express";
-import { AuthRequest } from "../middlewares/authMiddlewware.js";
+import { WorkspaceRequest } from "../middlewares/workspaceMiddleware.js";
 import { GoogleGenAI } from "@google/genai";
 import axios from "axios";
-import { cloudinary } from "../config/cloudinary.js";
+import { cloudinary, isCloudinaryConfigured } from "../config/cloudinary.js";
 import { Generation } from "../models/Generation.js";
 import { Post } from "../models/Post.js";
+import { env } from "../config/env.js";
+import { logError } from "../utils/redact.js";
 
 
 // Helper to poll Leonardo.ai
@@ -29,7 +31,9 @@ const pollLeonardoJob = async (generationId: string, apiKey: string) : Promise<s
             throw new Error("Leonardo.ai generation failed.")
            }
         } catch (err: any) {
-            console.error("Polling error:", err?.response?.data || err.message);
+            // Leonardo echoes the Authorization header back in some error
+            // payloads, so this must not be logged raw.
+            logError("Leonardo polling error", err?.response?.data || err);
         }
 
         await new Promise((resolve)=> setTimeout(resolve, delay));
@@ -39,13 +43,16 @@ const pollLeonardoJob = async (generationId: string, apiKey: string) : Promise<s
 
 // Generate post
 // POST /api/posts/generate
-export const generatePost = async (req: AuthRequest, res: Response): Promise<void> => {
+export const generatePost = async (req: WorkspaceRequest, res: Response): Promise<void> => {
     try {
         const { prompt, tone, generateImage } = req.body;
 
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = env.geminiApiKey;
         if(!apiKey){
-            res.status(400).json({message: "Gemini API Key is missing. Please add it to your server/.env file." });
+            // 503, not 400 — nothing is wrong with the client's request. The
+            // message stays generic: server-side file layout is not the
+            // caller's business.
+            res.status(503).json({message: "AI post generation is not available on this server." });
             return;
         }
 
@@ -77,8 +84,10 @@ export const generatePost = async (req: AuthRequest, res: Response): Promise<voi
         let mediaUrl = "";
         if(generateImage){
            try {
-            const leonardoKey = process.env.LEONARDO_API_KEY;
-            if(leonardoKey){
+            const leonardoKey = env.leonardoApiKey;
+            // Both keys are needed: Leonardo generates the image, Cloudinary
+            // persists it before Leonardo's temporary URL expires.
+            if(leonardoKey && isCloudinaryConfigured()){
                 // Use Leonardo.ai for image generation
                 const leoResponse = await axios.post(
                     "https://cloud.leonardo.ai/api/rest/v2/generations",
@@ -107,17 +116,20 @@ export const generatePost = async (req: AuthRequest, res: Response): Promise<voi
 
                 // Upload to Cloudinary for persistence
                 const uploadResult = await cloudinary.uploader.upload(tempUrl, {
-                    folder: "ai-generations",
+                    // Namespaced per workspace so a future workspace deletion
+                    // can clean up its assets in one call.
+                    folder: `ai-generations/${req.workspace._id}`,
                 });
                 mediaUrl = uploadResult.secure_url;
             }
            } catch (err: any) {
-                console.error("Image generation failed:", err);
-           } 
+                logError("Image generation failed", err);
+           }
         }
 
          // Save generation to DB
           const generation = await Generation.create({
+            workspace: req.workspace._id,
             user: req.user._id,
             prompt,
             content,
@@ -136,9 +148,9 @@ export const generatePost = async (req: AuthRequest, res: Response): Promise<voi
 
 // Get generations
 // GET /api/posts/generations
-export const getGenerations = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getGenerations = async (req: WorkspaceRequest, res: Response): Promise<void> => {
     try {
-        const generations = await Generation.find({user: req.user._id}).sort({createdAt: -1})
+        const generations = await Generation.find({workspace: req.workspace._id}).sort({createdAt: -1})
         res.json(generations)
     } catch (error: any) {
         res.status(500).json({ message: error?.message || "Server error" });
@@ -148,9 +160,11 @@ export const getGenerations = async (req: AuthRequest, res: Response): Promise<v
 
 // Get posts
 // GET /api/posts
-export const getPosts = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getPosts = async (req: WorkspaceRequest, res: Response): Promise<void> => {
     try {
-        const posts = await Post.find({user: req.user._id})
+        const posts = await Post.find({workspace: req.workspace._id})
+            .sort({scheduledFor: -1})
+            .populate("user", "name avatarUrl")
         res.json(posts)
     } catch (error: any) {
         res.status(500).json({ message: error?.message || "Server error" });
@@ -160,7 +174,7 @@ export const getPosts = async (req: AuthRequest, res: Response): Promise<void> =
 
 // Schedule post
 // POST /api/posts
-export const schedulePost = async (req: AuthRequest, res: Response): Promise<void> => {
+export const schedulePost = async (req: WorkspaceRequest, res: Response): Promise<void> => {
     try {
         const { content, platforms, scheduledFor, status } = req.body;
 
@@ -178,8 +192,12 @@ export const schedulePost = async (req: AuthRequest, res: Response): Promise<voi
         let mediaType: "image" | "video" | undefined = req.body.mediaType;
 
         if(req.file){
+            if(!isCloudinaryConfigured()){
+                res.status(503).json({ message: "Media upload is not available on this server." });
+                return;
+            }
             const result = await new Promise<any>((resolve, reject)=>{
-                const stream = cloudinary.uploader.upload_stream({resource_type: "auto", folder: "social-scheduler"}, (error, result)=>{
+                const stream = cloudinary.uploader.upload_stream({resource_type: "auto", folder: `social-scheduler/${req.workspace._id}`}, (error, result)=>{
                     if(error) reject(error);
                     else resolve(result)
                 });
@@ -190,6 +208,7 @@ export const schedulePost = async (req: AuthRequest, res: Response): Promise<voi
         }
 
         const post = await Post.create({
+            workspace: req.workspace._id,
             user: req.user._id,
             content,
             platforms: parsedPlatforms,

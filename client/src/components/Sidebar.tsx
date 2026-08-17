@@ -1,6 +1,7 @@
-import { CalendarDaysIcon, LayoutDashboardIcon, LogOutIcon, UsersIcon, Wand2Icon } from 'lucide-react'
+import { CalendarDaysIcon, LayoutDashboardIcon, LogOutIcon, UsersIcon, UsersRoundIcon, Wand2Icon } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import WorkspaceSwitcher from './WorkspaceSwitcher'
 
 const Sidebar = ({isOpen, setIsOpen} : {isOpen: boolean, setIsOpen: (val: boolean) => void}) => {
 
@@ -13,6 +14,7 @@ const Sidebar = ({isOpen, setIsOpen} : {isOpen: boolean, setIsOpen: (val: boolea
         { name: "Accounts", icon: UsersIcon, path: "/accounts" },
         { name: "Scheduler", icon: CalendarDaysIcon, path: "/schedule" },
         { name: "AI Composer", icon: Wand2Icon, path: "/ai-composer" },
+        { name: "Members", icon: UsersRoundIcon, path: "/settings/workspace" },
     ]
 
   return (
@@ -27,8 +29,11 @@ const Sidebar = ({isOpen, setIsOpen} : {isOpen: boolean, setIsOpen: (val: boolea
 
      </div>
 
+      {/* Workspace switcher */}
+      <WorkspaceSwitcher />
+
       {/* Nav section label */}
-      <div className='px-6 py-2'>
+      <div className='px-6 py-2 pt-4'>
         <span className='text-xs text-slate-500 uppercase tracking-wider'>Menu</span>
       </div>
 

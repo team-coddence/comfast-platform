@@ -3,11 +3,13 @@ import { ArrowRightIcon, CalendarIcon, ClockIcon, HistoryIcon, Loader2Icon, Time
 import api from "../api/axios";
 import toast from "react-hot-toast";
 import { useEnabledPlatforms } from "../hooks/useEnabledPlatforms";
+import { useWorkspace } from "../context/WorkspaceContext";
 
 
 const AIComposer = () => {
 
   const enabledPlatforms = useEnabledPlatforms();
+  const canGenerate = useWorkspace().can("editor");
   const [prompt, setPrompt] = useState("");
   const [tone, setTone] = useState("Professional");
   const [generateImage, setGenerateImage] = useState(true);
@@ -91,6 +93,9 @@ const AIComposer = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
       {/* Input Section */}
+      {/* Viewers see past generations but cannot spend AI credits, matching the
+          server's editor requirement on POST /api/posts/generate. */}
+      {canGenerate && (
       <div className="space-y-6 text-center mt-20">
         <h1 className="text-3xl text-slate-700 tracking-tight">What should we create today?</h1>
         <div className="relative group mt-12">
@@ -131,6 +136,7 @@ const AIComposer = () => {
               ))}
         </div>
       </div>
+      )}
 
       {/* AI Generated Posts */}
       <div className="space-y-6 pt-12 border-t border-slate-100">

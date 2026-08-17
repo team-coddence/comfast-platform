@@ -1,0 +1,29 @@
+# Build context exclusions for the API image.
+#
+# NOTE: server/docs/ is NOT excluded — it holds openapi.ts, which is compiled
+# source, not documentation.
+
+# Secrets must never enter the build context. A file copied into a layer stays
+# in that layer's history even if a later instruction deletes it, so anyone who
+# pulls the image can recover it.
+.env
+.env.*
+
+# Reinstalled inside the image. bcrypt compiles a native binding, so host
+# node_modules built on Windows/macOS would not run on the Linux runtime.
+node_modules
+
+# Rebuilt inside the image so the artifact always matches the source in the
+# context, never a stale local build.
+dist
+
+# Irrelevant to the build, and excluded to keep the context small so layer
+# caching is not busted by unrelated file changes.
+.git
+.gitignore
+Dockerfile
+.dockerignore
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
