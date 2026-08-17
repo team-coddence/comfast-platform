@@ -30,11 +30,16 @@ await connectDB()
 // Middleware
 // Restricted to the configured frontend origins. A wildcard CORS policy lets
 // any site on the internet call this API with a victim's credentials.
+// The backend's own origin is also allowed in non-production so the
+// Swagger "Try it out" console (served from that origin) can call the API.
+const allowedOrigins = env.isProduction
+    ? env.frontendUrls
+    : [...env.frontendUrls, env.backendUrl];
 app.use(cors({
     origin: (origin, callback) => {
         // Same-origin and non-browser callers (curl, server-to-server) send no
         // Origin header and are not subject to CORS.
-        if (!origin || env.frontendUrls.includes(origin)) return callback(null, true);
+        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
         callback(new Error(`Origin ${origin} is not allowed by CORS`));
     },
     credentials: true,
