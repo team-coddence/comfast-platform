@@ -5,10 +5,15 @@ services:
     container_name: comfast-db
     restart: unless-stopped
     ports:
-      - "27097:27017"
+      # Bound to loopback: without the 127.0.0.1 prefix Docker publishes the
+      # port on every interface and punches through the host firewall, exposing
+      # the database to the local network.
+      - "127.0.0.1:27097:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: unipostadmin
-      MONGO_INITDB_ROOT_PASSWORD: 123456789
+      # Supplied from the root .env file (see .env.example). Never hard-code
+      # database credentials in a tracked file.
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?set MONGO_ROOT_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in .env}
     volumes:
       - comfast_db_data:/data/db
 

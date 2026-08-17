@@ -3,7 +3,8 @@ import { Post } from "../models/Post.js";
 import { Account } from "../models/Account.js";
 import zernio from "../config/zernio.js";
 import { ActivityLog } from "../models/ActivityLog.js";
-import { platform } from "node:os";
+import { logError } from "../utils/redact.js";
+import { ensureWorkspaceForUser } from "./workspaceService.js";
 
 export const initScheduler = ()=>{
     cron.schedule("* * * * *", async ()=>{
@@ -13,8 +14,16 @@ export const initScheduler = ()=>{
 
             for (const post of postsToPublish) {
                 try {
+                    // Legacy posts written before workspaces exist have no
+                    // `workspace`. Querying with `undefined` silently matches
+                    // nothing, which would leave them stuck as "scheduled"
+                    // forever rather than failing visibly. Resolve the author's
+                    // workspace instead. Remove once the backfill has been
+                    // verified in every environment.
+                    const workspaceId = post.workspace ?? (await ensureWorkspaceForUser({_id: post.user}))._id;
+
                     const accounts = await Account.find({
-                        user: post.user,
+                        workspace: workspaceId,
                         platform: {$in: post.platforms},
                         status: "connected",
                         zernioAccountId: {$exists: true}
@@ -68,6 +77,9 @@ export const initScheduler = ()=>{
                     await post.save();
 
                     await ActivityLog.create({
+                        workspace: workspaceId,
+                        // Kept so the activity feed can still attribute the post
+                        // to its author.
                         user: post.user,
                         actionType: "POST_PUBLISHED",
                         description: `Published post to ${accounts.map((a) => a.platform).join(", ")} `,
@@ -75,7 +87,7 @@ export const initScheduler = ()=>{
                     })
                     
                 } catch (err: any) {
-                    console.error(`Failed to publish post ${post._id} :`, err?.response?.data || err?.message);
+                    logError(`Failed to publish post ${post._id}`, err?.response?.data || err);
                     post.status = "failed";
                     await post.save();
                 }
@@ -84,7 +96,7 @@ export const initScheduler = ()=>{
                 console.log(`Evaluated ${postsToPublish.length} posts at ${now.toISOString()}`);
             }
         } catch (error) {
-            console.error("Error in scheduler:", error);
+            logError("Error in scheduler", error);
         }
     })
      console.log("Scheduler service initialized.");

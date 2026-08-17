@@ -4,6 +4,7 @@ import { MailIcon, LockIcon, ArrowRightIcon, User2Icon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/axios";
 import toast from "react-hot-toast";
+import { PENDING_INVITE_KEY } from "./AcceptInvite";
 
 function GoogleIcon({ className }: { className?: string }) {
     return (
@@ -25,6 +26,13 @@ export default function Login() {
     const navigate = useNavigate();
     const {login, user} = useAuth()
 
+    // Someone who arrived from an invite link should land back on it after
+    // signing in, not on the dashboard.
+    const destinationAfterAuth = () => {
+        const pendingInvite = localStorage.getItem(PENDING_INVITE_KEY);
+        return pendingInvite ? `/invite/${pendingInvite}` : "/dashboard";
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -32,7 +40,7 @@ export default function Login() {
             const { data } = await api.post(`/api/auth/${loginState ? "login" : "register"}`, { name, email, password })
 
             login(data, data.token)
-            navigate("/dashboard")
+            navigate(destinationAfterAuth())
        } catch (error: any) {
             toast.error(error.response?.data?.message || error?.message)
        }finally{
@@ -47,12 +55,20 @@ export default function Login() {
     };
 
     useEffect(() => {
-    const err = new URLSearchParams(location.search).get("error");
-    if (err === "oauth_failed") toast.error("Sign-in cancelled or failed.");
+    const params = new URLSearchParams(location.search);
+
+    if (params.get("error") === "oauth_failed") toast.error("Sign-in cancelled or failed.");
+
+    // Survives the Google redirect, which discards all in-page state.
+    const invite = params.get("invite");
+    if (invite) {
+        localStorage.setItem(PENDING_INVITE_KEY, invite);
+        setLoginState(false);
+    }
     }, []);
 
     useEffect(()=>{
-        if(user) navigate('/dashboard')
+        if(user) navigate(destinationAfterAuth())
     },[user])
 
     return (
