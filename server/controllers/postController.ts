@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { AuthRequest } from "../middlewares/authMiddlewware.js";
+import { WorkspaceRequest } from "../middlewares/workspaceMiddleware.js";
 import { GoogleGenAI } from "@google/genai";
 import axios from "axios";
 import { cloudinary, isCloudinaryConfigured } from "../config/cloudinary.js";
@@ -43,7 +43,7 @@ const pollLeonardoJob = async (generationId: string, apiKey: string) : Promise<s
 
 // Generate post
 // POST /api/posts/generate
-export const generatePost = async (req: AuthRequest, res: Response): Promise<void> => {
+export const generatePost = async (req: WorkspaceRequest, res: Response): Promise<void> => {
     try {
         const { prompt, tone, generateImage } = req.body;
 
@@ -116,7 +116,9 @@ export const generatePost = async (req: AuthRequest, res: Response): Promise<voi
 
                 // Upload to Cloudinary for persistence
                 const uploadResult = await cloudinary.uploader.upload(tempUrl, {
-                    folder: "ai-generations",
+                    // Namespaced per workspace so a future workspace deletion
+                    // can clean up its assets in one call.
+                    folder: `ai-generations/${req.workspace._id}`,
                 });
                 mediaUrl = uploadResult.secure_url;
             }
@@ -127,6 +129,7 @@ export const generatePost = async (req: AuthRequest, res: Response): Promise<voi
 
          // Save generation to DB
           const generation = await Generation.create({
+            workspace: req.workspace._id,
             user: req.user._id,
             prompt,
             content,
@@ -145,9 +148,9 @@ export const generatePost = async (req: AuthRequest, res: Response): Promise<voi
 
 // Get generations
 // GET /api/posts/generations
-export const getGenerations = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getGenerations = async (req: WorkspaceRequest, res: Response): Promise<void> => {
     try {
-        const generations = await Generation.find({user: req.user._id}).sort({createdAt: -1})
+        const generations = await Generation.find({workspace: req.workspace._id}).sort({createdAt: -1})
         res.json(generations)
     } catch (error: any) {
         res.status(500).json({ message: error?.message || "Server error" });
@@ -157,9 +160,11 @@ export const getGenerations = async (req: AuthRequest, res: Response): Promise<v
 
 // Get posts
 // GET /api/posts
-export const getPosts = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getPosts = async (req: WorkspaceRequest, res: Response): Promise<void> => {
     try {
-        const posts = await Post.find({user: req.user._id})
+        const posts = await Post.find({workspace: req.workspace._id})
+            .sort({scheduledFor: -1})
+            .populate("user", "name avatarUrl")
         res.json(posts)
     } catch (error: any) {
         res.status(500).json({ message: error?.message || "Server error" });
@@ -169,7 +174,7 @@ export const getPosts = async (req: AuthRequest, res: Response): Promise<void> =
 
 // Schedule post
 // POST /api/posts
-export const schedulePost = async (req: AuthRequest, res: Response): Promise<void> => {
+export const schedulePost = async (req: WorkspaceRequest, res: Response): Promise<void> => {
     try {
         const { content, platforms, scheduledFor, status } = req.body;
 
@@ -192,7 +197,7 @@ export const schedulePost = async (req: AuthRequest, res: Response): Promise<voi
                 return;
             }
             const result = await new Promise<any>((resolve, reject)=>{
-                const stream = cloudinary.uploader.upload_stream({resource_type: "auto", folder: "social-scheduler"}, (error, result)=>{
+                const stream = cloudinary.uploader.upload_stream({resource_type: "auto", folder: `social-scheduler/${req.workspace._id}`}, (error, result)=>{
                     if(error) reject(error);
                     else resolve(result)
                 });
@@ -203,6 +208,7 @@ export const schedulePost = async (req: AuthRequest, res: Response): Promise<voi
         }
 
         const post = await Post.create({
+            workspace: req.workspace._id,
             user: req.user._id,
             content,
             platforms: parsedPlatforms,

@@ -12,6 +12,10 @@ import activityRouter from "./routes/activityRoutes.js";
 import { initScheduler } from "./services/schedulerService.js";
 import passport from "./config/passport.js";
 import socialLoginRouter from "./routes/socialLoginRoutes.js";
+import workspaceRouter from "./routes/workspaceRoutes.js";
+import invitationRouter from "./routes/invitationRoutes.js";
+import swaggerUi from "swagger-ui-express";
+import { openApiSpec } from "./docs/openapi.js";
 import { logError } from "./utils/redact.js";
 
 // First statement to run after the imports resolve: exits the process on a
@@ -26,11 +30,16 @@ await connectDB()
 // Middleware
 // Restricted to the configured frontend origins. A wildcard CORS policy lets
 // any site on the internet call this API with a victim's credentials.
+// The backend's own origin is also allowed in non-production so the
+// Swagger "Try it out" console (served from that origin) can call the API.
+const allowedOrigins = env.isProduction
+    ? env.frontendUrls
+    : [...env.frontendUrls, env.backendUrl];
 app.use(cors({
     origin: (origin, callback) => {
         // Same-origin and non-browser callers (curl, server-to-server) send no
         // Origin header and are not subject to CORS.
-        if (!origin || env.frontendUrls.includes(origin)) return callback(null, true);
+        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
         callback(new Error(`Origin ${origin} is not allowed by CORS`));
     },
     credentials: true,
@@ -48,12 +57,32 @@ app.get('/', (_req: Request, res: Response) => {
     res.send('Server is Live!');
 });
 
+// Interactive API docs. Disabled in production: the spec is a complete map of
+// the attack surface, and the "Try it out" console is a request forger pointed
+// at the live API.
+if (!env.isProduction) {
+    // The raw document, for client generators and external tooling.
+    app.get('/api/docs.json', (_req: Request, res: Response) => { res.json(openApiSpec) });
+    app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec as any, {
+        customSiteTitle: "Social Scheduler API",
+        swaggerOptions: {
+            // Keeps the bearer token and X-Workspace-Id across reloads, so a
+            // testing session survives a refresh.
+            persistAuthorization: true,
+            docExpansion: "none",
+            tagsSorter: "alpha",
+        },
+    }));
+}
+
 app.use("/api/auth/oauth", socialLoginRouter)
 app.use("/api/auth", authRouter)
 app.use("/api/oauth", socialAuthRouter)
 app.use("/api/accounts", accountRouter)
 app.use("/api/posts", postRouter)
 app.use("/api/activity", activityRouter)
+app.use("/api/workspaces", workspaceRouter)
+app.use("/api/invitations", invitationRouter)
 
 // Initialize Scheduler
 initScheduler()

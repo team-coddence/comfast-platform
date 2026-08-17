@@ -1,5 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../middlewares/authMiddlewware.js";
+import { WorkspaceRequest } from "../middlewares/workspaceMiddleware.js";
 import { Account } from "../models/Account.js";
 import zernio from "../config/zernio.js";
 import { getEnabledPlatforms } from "../config/platforms.js";
@@ -13,9 +14,10 @@ export const getPlatforms = async (_req: AuthRequest, res: Response) : Promise<v
 
 // Get all accounts
 // GET /api/accounts
-export const getAccounts = async (req: AuthRequest, res: Response) : Promise<void> =>{
+export const getAccounts = async (req: WorkspaceRequest, res: Response) : Promise<void> =>{
     try {
-        const accounts = await Account.find({user: req.user._id, platform: {$in: getEnabledPlatforms()} })
+        const accounts = await Account.find({workspace: req.workspace._id, platform: {$in: getEnabledPlatforms()} })
+            .populate("user", "name avatarUrl")
         res.json(accounts)
     } catch (error: any) {
         res.status(500).json({ message: error?.message || "Server error" });
@@ -24,7 +26,7 @@ export const getAccounts = async (req: AuthRequest, res: Response) : Promise<voi
 
 // Add account
 // POST /api/accounts
-export const addAccount = async (req: AuthRequest, res: Response) : Promise<void> =>{
+export const addAccount = async (req: WorkspaceRequest, res: Response) : Promise<void> =>{
     try {
         const {platform, handle, avatarUrl} = req.body;
 
@@ -33,7 +35,7 @@ export const addAccount = async (req: AuthRequest, res: Response) : Promise<void
             return;
         }
 
-        const account = await Account.create({user: req.user._id, platform, handle, avatarUrl });
+        const account = await Account.create({workspace: req.workspace._id, user: req.user._id, platform, handle, avatarUrl });
         res.status(201).json(account)
     } catch (error: any) {
         res.status(500).json({ message: error?.message || "Server error" });
@@ -42,9 +44,9 @@ export const addAccount = async (req: AuthRequest, res: Response) : Promise<void
 
 // Disconnect account
 // DELETE /api/accounts/:id
-export const disconnectAccount = async (req: AuthRequest, res: Response) : Promise<void> =>{
+export const disconnectAccount = async (req: WorkspaceRequest, res: Response) : Promise<void> =>{
     try {
-        const account = await Account.findOne({_id: req.params.id, user: req.user._id});
+        const account = await Account.findOne({_id: req.params.id, workspace: req.workspace._id});
         if(!account){
             res.status(404).json({ message: "Account not found" });
             return;
