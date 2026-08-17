@@ -1,8 +1,10 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import zernio from "../config/zernio.js";
-import { User } from "../models/User.js";
 import { Account } from "../models/Account.js";
-import { AuthRequest } from "../middlewares/authMiddlewware.js";
+import { WorkspaceRequest } from "../middlewares/workspaceMiddleware.js";
+import { getOrCreateZernioProfile } from "../services/workspaceService.js";
+import { getEnabledPlatforms, isPlatformEnabled } from "../config/platforms.js";
+import { logError, redactValue } from "../utils/redact.js";
 
 // Detects Zernio's "add a payment method" billing block (e.g. X/Twitter pass-through costs)
 const isPaymentRequiredError = (error: any): boolean => {
@@ -19,42 +21,28 @@ const respondWithZernioError = (res: Response, error: any) => {
         });
         return;
     }
-    res.status(500).json({ message: error?.message || "Server error" });
+    // Upstream error text can embed the Zernio API key or request headers, so
+    // it is logged (redacted) rather than returned to the caller.
+    logError("Zernio request failed", error);
+    res.status(500).json({ message: "Could not reach the publishing service. Please try again." });
 }
 
-// Helper to ensure user has a Zernio Profile.
-const getOrCreateZernioProfile = async (user:any) : Promise<string> => {
-    try {
-       if(user.zernioProfileId){
-        return user.zernioProfileId;
-       }
-
-       const createResult = await zernio.profiles.createProfile({
-        body: {name: `${user.name || user.email}'s workspace`} as any,
-       })
-       const created = (createResult.data as any)?.profile || createResult.data;
-
-       const pid = created?._id || created?.id;
-
-       if(!pid){
-        throw new Error("Failed to create Zernio profile — no ID returned")
-       }
-
-       await User.findByIdAndUpdate(user._id, {zernioProfileId: pid});
-       return pid;
-    } catch (error: any) {
-        console.error("getOrCreateZernioProfile Error:", error?.message || error);
-        throw error;
-    }
-}
-
+// The Zernio profile now belongs to the workspace, not the user — that mapping
+// is what keeps connected accounts separated between workspaces. See
+// services/workspaceService.ts for the provisioning logic.
 
 // Generate OAuth authorization URL
-// GET /api/auth/:platform
-export const generateAuthUrl = async (req: AuthRequest, res: Response) : Promise<void>=> {
+// GET /api/oauth/:platform/url
+export const generateAuthUrl = async (req: WorkspaceRequest, res: Response) : Promise<void>=> {
     try {
         const {platform} = req.params;
-        const profileId = await getOrCreateZernioProfile(req.user);
+
+        if(!isPlatformEnabled(String(platform))){
+            res.status(403).json({ message: `${platform} is not currently enabled` });
+            return;
+        }
+
+        const profileId = await getOrCreateZernioProfile(req.workspace);
 
         const origin = req.headers.origin;
         const redirectUrl = `${origin}/accounts`;
@@ -68,11 +56,12 @@ export const generateAuthUrl = async (req: AuthRequest, res: Response) : Promise
         })
 
         const data = result.data as any;
-        console.log("getConnectUrl response:", JSON.stringify(data, null, 2))
 
         const authUrl = data.authUrl;
         if(!authUrl){
-            throw new Error(`Zernio returned no authUrl. Full response: ${JSON.stringify(data)}`)
+            // The response body can carry credentials; redact before it becomes
+            // an error message that may be logged or surfaced.
+            throw new Error(`Zernio returned no authUrl. Response: ${redactValue(data)}`)
         }
 
         res.json({url: authUrl})
@@ -84,16 +73,16 @@ export const generateAuthUrl = async (req: AuthRequest, res: Response) : Promise
 
 // Sync connected accounts from Zernio into MongoDB
 // GET /api/auth/sync
-export const syncAccounts = async (req: AuthRequest, res: Response) : Promise<void>=>{
+export const syncAccounts = async (req: WorkspaceRequest, res: Response) : Promise<void>=>{
     try {
-        const profileId = await getOrCreateZernioProfile(req.user);
+        const profileId = await getOrCreateZernioProfile(req.workspace);
         const result = await zernio.accounts.listAccounts({
             query: {profileId} as any
         })
 
         const data = result.data as any;
         const zernioAccounts: any[] = data?.accounts || (Array.isArray(data) ? data : []);
-        const supportedPlatforms = ["twitter", "linkedin", "facebook", "instagram", "tiktok"];
+        const supportedPlatforms = getEnabledPlatforms();
         const syncedAccounts = [];
 
         for(const zAccount of zernioAccounts){
@@ -112,14 +101,21 @@ export const syncAccounts = async (req: AuthRequest, res: Response) : Promise<vo
             }
 
             const account = await Account.findOneAndUpdate(
-                {zernioAccountId: zid, user: req.user._id},
+                {zernioAccountId: zid, workspace: req.workspace._id},
                 {
-                    user: req.user._id,
-                    platform: normalizedPlatform,
-                    handle: zAccount.username || zAccount.name || zAccount.handle || "Unknown",
-                    zernioAccountId: zid,
-                    status: "connected",
-                    avatarUrl: zAccount.avatarUrl || zAccount.picture || zAccount.profile_image_url,
+                    // `user` records who first connected the account, so it is
+                    // set only on insert. Assigning it on every sync would make
+                    // whoever synced last the recorded connector of everyone's
+                    // accounts.
+                    $setOnInsert: { user: req.user._id },
+                    $set: {
+                        workspace: req.workspace._id,
+                        platform: normalizedPlatform,
+                        handle: zAccount.username || zAccount.name || zAccount.handle || "Unknown",
+                        zernioAccountId: zid,
+                        status: "connected",
+                        avatarUrl: zAccount.avatarUrl || zAccount.picture || zAccount.profile_image_url,
+                    },
                 },
                 {upsert: true, returnDocument: 'after'}
             )

@@ -3,12 +3,14 @@ import { PLATFORMS } from "../assets/assets";
 
 interface AccountListProps {
     accounts: any[];
-    onDisconnect: (accountId: string)=> Promise<void>
+    /** Omitted for members below admin, which hides the disconnect control. */
+    onDisconnect?: (accountId: string)=> Promise<void>
 }
 
 const AccountList = ({accounts, onDisconnect}: AccountListProps ) => {
 
     const handleDisconnect = async (accountId: string) => {
+        if(!onDisconnect) return;
         const confirm = window.confirm("Are you sure you want to disconnect this account?");
         if(!confirm) return;
         await onDisconnect(accountId)
@@ -59,12 +61,14 @@ const AccountList = ({accounts, onDisconnect}: AccountListProps ) => {
 
                     </div>
 
-                    <button 
-                    onClick={()=> handleDisconnect(account._id)}
-                    title="Disconnect account"
-                    className="ml-2 p-1.5 rounded-lg text-slate-300 group-hover:text-red-500 transition-all">
-                        <UnplugIcon className="size-4"/>
-                    </button>
+                    {onDisconnect && (
+                        <button
+                        onClick={()=> handleDisconnect(account._id)}
+                        title="Disconnect account"
+                        className="ml-2 p-1.5 rounded-lg text-slate-300 group-hover:text-red-500 transition-all">
+                            <UnplugIcon className="size-4"/>
+                        </button>
+                    )}
 
                 </div>
             )

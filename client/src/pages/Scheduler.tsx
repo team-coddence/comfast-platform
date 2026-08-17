@@ -3,10 +3,14 @@ import { PLATFORMS } from "../assets/assets";
 import { ArrowRightIcon, CalendarDaysIcon, CalendarIcon, ClockIcon, SendIcon, XIcon } from "lucide-react";
 import api from "../api/axios";
 import toast from "react-hot-toast";
+import { useEnabledPlatforms } from "../hooks/useEnabledPlatforms";
+import { useWorkspace } from "../context/WorkspaceContext";
 
 
 const Scheduler = () => {
 
+  const enabledPlatforms = useEnabledPlatforms();
+  const canCompose = useWorkspace().can("editor");
   const [posts, setPosts] = useState<any[]>([]);
   const [content, setContent] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
@@ -82,6 +86,9 @@ const Scheduler = () => {
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-full">
       {/* ── Compose panel ── */}
+      {/* Viewers get the queues but not the composer, matching the server's
+          editor requirement on POST /api/posts. */}
+      {canCompose && (
       <div className="w-full lg:w-[460px] shrink-0">
         <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="flex items-center gap-2 mb-6">
@@ -93,7 +100,7 @@ const Scheduler = () => {
               <div>
                 <label className="block text-xs text-slate-500 uppercase mb-2">Platforms</label>
                 <div className="flex flex-wrap gap-3">
-                  {PLATFORMS.map((p)=>{
+                  {enabledPlatforms.map((p)=>{
                     const active = selectedPlatforms.includes(p.id);
                     return (
                       <button key={p.id} type="button" onClick={()=> togglePlatform(p.id)}
@@ -173,6 +180,7 @@ const Scheduler = () => {
             </form>
         </div>
       </div>
+      )}
 
       {/* ── Queue panels ── */}
       <div className="flex-1 flex flex-col gap-6 min-w-0">
