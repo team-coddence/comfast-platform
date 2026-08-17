@@ -1,4 +1,6 @@
-import "dotenv/config";
+// Imported first on purpose: this module loads .env, so it must be evaluated
+// before any other module reads configuration at import time.
+import { assertEnvironment, env } from "./config/env.js";
 import express, { NextFunction, Request, Response } from 'express';
 import cors from "cors";
 import connectDB from "./config/db.js";
@@ -10,6 +12,11 @@ import activityRouter from "./routes/activityRoutes.js";
 import { initScheduler } from "./services/schedulerService.js";
 import passport from "./config/passport.js";
 import socialLoginRouter from "./routes/socialLoginRoutes.js";
+import { logError } from "./utils/redact.js";
+
+// First statement to run after the imports resolve: exits the process on a
+// missing or malformed credential, before anything connects or listens.
+assertEnvironment();
 
 const app = express();
 
@@ -17,11 +24,25 @@ const app = express();
 await connectDB()
 
 // Middleware
-app.use(cors())
-app.use(express.json());
+// Restricted to the configured frontend origins. A wildcard CORS policy lets
+// any site on the internet call this API with a victim's credentials.
+app.use(cors({
+    origin: (origin, callback) => {
+        // Same-origin and non-browser callers (curl, server-to-server) send no
+        // Origin header and are not subject to CORS.
+        if (!origin || env.frontendUrls.includes(origin)) return callback(null, true);
+        callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    },
+    credentials: true,
+}))
+// Cap the JSON body size so a single request cannot exhaust memory.
+app.use(express.json({ limit: "1mb" }));
 app.use(passport.initialize());
 
-const port = process.env.PORT || 3000;
+// Do not advertise the server stack to scanners.
+app.disable("x-powered-by");
+
+const port = env.port;
 
 app.get('/', (_req: Request, res: Response) => {
     res.send('Server is Live!');
@@ -39,8 +60,11 @@ initScheduler()
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction)=>{
-    console.error(err);
-    res.status(500).send(err?.response?.data?.message || err?.message)
+    // The full error goes to the logs (redacted); the client gets a generic
+    // message. Upstream SDK errors routinely embed request headers and API
+    // keys, which must never be echoed into an HTTP response.
+    logError("Unhandled error", err);
+    res.status(err?.status || 500).json({ message: "Something went wrong. Please try again." })
 })
 
 app.listen(port, () => {

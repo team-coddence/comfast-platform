@@ -3,6 +3,7 @@ import { AuthRequest } from "../middlewares/authMiddlewware.js";
 import { Account } from "../models/Account.js";
 import zernio from "../config/zernio.js";
 import { getEnabledPlatforms } from "../config/platforms.js";
+import { logError } from "../utils/redact.js";
 
 // Get platforms enabled for this deployment
 // GET /api/accounts/platforms
@@ -52,7 +53,8 @@ export const disconnectAccount = async (req: AuthRequest, res: Response) : Promi
             try {
                 await zernio.accounts.deleteAccount({path: {accountId: account.zernioAccountId}})
             } catch (error: any) {
-                 res.status(500).json({ message: error?.response?.data?.message || error?.message });
+                 logError("Zernio deleteAccount failed", error);
+                 res.status(502).json({ message: "Could not disconnect the account from the publishing service. Please try again." });
                  return
             }
         }

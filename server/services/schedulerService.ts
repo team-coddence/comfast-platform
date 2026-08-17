@@ -3,7 +3,7 @@ import { Post } from "../models/Post.js";
 import { Account } from "../models/Account.js";
 import zernio from "../config/zernio.js";
 import { ActivityLog } from "../models/ActivityLog.js";
-import { platform } from "node:os";
+import { logError } from "../utils/redact.js";
 
 export const initScheduler = ()=>{
     cron.schedule("* * * * *", async ()=>{
@@ -75,7 +75,7 @@ export const initScheduler = ()=>{
                     })
                     
                 } catch (err: any) {
-                    console.error(`Failed to publish post ${post._id} :`, err?.response?.data || err?.message);
+                    logError(`Failed to publish post ${post._id}`, err?.response?.data || err);
                     post.status = "failed";
                     await post.save();
                 }
@@ -84,7 +84,7 @@ export const initScheduler = ()=>{
                 console.log(`Evaluated ${postsToPublish.length} posts at ${now.toISOString()}`);
             }
         } catch (error) {
-            console.error("Error in scheduler:", error);
+            logError("Error in scheduler", error);
         }
     })
      console.log("Scheduler service initialized.");

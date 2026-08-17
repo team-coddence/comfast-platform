@@ -1,2 +1,20 @@
 node_modules
+
+# Secrets — never commit. Only *.example templates are tracked.
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+
+# Build output
+dist
+build
+
+# Logs
+*.log
+npm-debug.log*

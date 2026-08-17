@@ -4,6 +4,7 @@ import { User } from "../models/User.js";
 import { Account } from "../models/Account.js";
 import { AuthRequest } from "../middlewares/authMiddlewware.js";
 import { getEnabledPlatforms, isPlatformEnabled } from "../config/platforms.js";
+import { logError, redactValue } from "../utils/redact.js";
 
 // Detects Zernio's "add a payment method" billing block (e.g. X/Twitter pass-through costs)
 const isPaymentRequiredError = (error: any): boolean => {
@@ -20,7 +21,10 @@ const respondWithZernioError = (res: Response, error: any) => {
         });
         return;
     }
-    res.status(500).json({ message: error?.message || "Server error" });
+    // Upstream error text can embed the Zernio API key or request headers, so
+    // it is logged (redacted) rather than returned to the caller.
+    logError("Zernio request failed", error);
+    res.status(500).json({ message: "Could not reach the publishing service. Please try again." });
 }
 
 // Helper to ensure user has a Zernio Profile.
@@ -44,7 +48,7 @@ const getOrCreateZernioProfile = async (user:any) : Promise<string> => {
        await User.findByIdAndUpdate(user._id, {zernioProfileId: pid});
        return pid;
     } catch (error: any) {
-        console.error("getOrCreateZernioProfile Error:", error?.message || error);
+        logError("getOrCreateZernioProfile failed", error);
         throw error;
     }
 }
@@ -75,11 +79,12 @@ export const generateAuthUrl = async (req: AuthRequest, res: Response) : Promise
         })
 
         const data = result.data as any;
-        console.log("getConnectUrl response:", JSON.stringify(data, null, 2))
 
         const authUrl = data.authUrl;
         if(!authUrl){
-            throw new Error(`Zernio returned no authUrl. Full response: ${JSON.stringify(data)}`)
+            // The response body can carry credentials; redact before it becomes
+            // an error message that may be logged or surfaced.
+            throw new Error(`Zernio returned no authUrl. Response: ${redactValue(data)}`)
         }
 
         res.json({url: authUrl})

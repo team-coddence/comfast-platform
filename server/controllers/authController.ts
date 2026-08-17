@@ -3,10 +3,6 @@ import { User } from "../models/User.js";
 import bcrypt from 'bcrypt'
 import { generateToken } from "../utils/token.js";
 
-/*const generateToken = (id: string)=>{
-    return jwt.sign({id}, process.env.JWT_SECRET || "fallback_secret", {expiresIn: '30d'} );
-}*/
-
 // Register user
 // POST /api/auth/register
 export const registerUser = async (req:Request, res: Response): Promise<void> => {
@@ -40,7 +36,10 @@ export const loginUser = async (req:Request, res: Response): Promise<void> => {
 
         const user = await User.findOne({email})
 
-        if(user && (await bcrypt.compare(password, user.password))){
+        // Accounts created through Google sign-in have no password hash.
+        // Without this guard bcrypt.compare is called with undefined and
+        // throws, turning a routine bad login into a 500.
+        if(user?.password && (await bcrypt.compare(password, user.password))){
             res.json({_id: user._id, name: user.name, email: user.email, token: generateToken(user._id.toString()) })
         }else{
             res.status(401).json({message: "Invalid email or password"})

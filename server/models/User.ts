@@ -13,4 +13,14 @@ const userSchema = new mongoose.Schema({
 
 userSchema.index({provider: 1, providerSub: 1}, {unique: true, sparse: true});
 
+// `password` stays selected by default because loginUser needs the hash to
+// compare against, so guard the serialisation boundary instead: any user
+// document sent through res.json() drops the hash.
+userSchema.set("toJSON", {
+    transform: (_doc, ret: Record<string, any>) => {
+        delete ret.password;
+        return ret;
+    }
+})
+
 export const User = mongoose.model('User', userSchema)

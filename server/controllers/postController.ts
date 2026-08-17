@@ -2,9 +2,11 @@ import { Response } from "express";
 import { AuthRequest } from "../middlewares/authMiddlewware.js";
 import { GoogleGenAI } from "@google/genai";
 import axios from "axios";
-import { cloudinary } from "../config/cloudinary.js";
+import { cloudinary, isCloudinaryConfigured } from "../config/cloudinary.js";
 import { Generation } from "../models/Generation.js";
 import { Post } from "../models/Post.js";
+import { env } from "../config/env.js";
+import { logError } from "../utils/redact.js";
 
 
 // Helper to poll Leonardo.ai
@@ -29,7 +31,9 @@ const pollLeonardoJob = async (generationId: string, apiKey: string) : Promise<s
             throw new Error("Leonardo.ai generation failed.")
            }
         } catch (err: any) {
-            console.error("Polling error:", err?.response?.data || err.message);
+            // Leonardo echoes the Authorization header back in some error
+            // payloads, so this must not be logged raw.
+            logError("Leonardo polling error", err?.response?.data || err);
         }
 
         await new Promise((resolve)=> setTimeout(resolve, delay));
@@ -43,9 +47,12 @@ export const generatePost = async (req: AuthRequest, res: Response): Promise<voi
     try {
         const { prompt, tone, generateImage } = req.body;
 
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = env.geminiApiKey;
         if(!apiKey){
-            res.status(400).json({message: "Gemini API Key is missing. Please add it to your server/.env file." });
+            // 503, not 400 — nothing is wrong with the client's request. The
+            // message stays generic: server-side file layout is not the
+            // caller's business.
+            res.status(503).json({message: "AI post generation is not available on this server." });
             return;
         }
 
@@ -77,8 +84,10 @@ export const generatePost = async (req: AuthRequest, res: Response): Promise<voi
         let mediaUrl = "";
         if(generateImage){
            try {
-            const leonardoKey = process.env.LEONARDO_API_KEY;
-            if(leonardoKey){
+            const leonardoKey = env.leonardoApiKey;
+            // Both keys are needed: Leonardo generates the image, Cloudinary
+            // persists it before Leonardo's temporary URL expires.
+            if(leonardoKey && isCloudinaryConfigured()){
                 // Use Leonardo.ai for image generation
                 const leoResponse = await axios.post(
                     "https://cloud.leonardo.ai/api/rest/v2/generations",
@@ -112,8 +121,8 @@ export const generatePost = async (req: AuthRequest, res: Response): Promise<voi
                 mediaUrl = uploadResult.secure_url;
             }
            } catch (err: any) {
-                console.error("Image generation failed:", err);
-           } 
+                logError("Image generation failed", err);
+           }
         }
 
          // Save generation to DB
@@ -178,6 +187,10 @@ export const schedulePost = async (req: AuthRequest, res: Response): Promise<voi
         let mediaType: "image" | "video" | undefined = req.body.mediaType;
 
         if(req.file){
+            if(!isCloudinaryConfigured()){
+                res.status(503).json({ message: "Media upload is not available on this server." });
+                return;
+            }
             const result = await new Promise<any>((resolve, reject)=>{
                 const stream = cloudinary.uploader.upload_stream({resource_type: "auto", folder: "social-scheduler"}, (error, result)=>{
                     if(error) reject(error);
