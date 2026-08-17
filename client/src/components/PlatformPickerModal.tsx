@@ -1,15 +1,16 @@
 import { CheckCircleIcon, ExternalLinkIcon, XIcon } from "lucide-react";
-import { PLATFORMS } from "../assets/assets";
+import type { Platform } from "../assets/assets";
 
 
 interface PlatformPickerModalProps{
+    platforms: Platform[];
     connectedIds: string[];
     connecting: string | null;
     onClose: () => void;
     onConnect: (platformId: string) => void;
 }
 
-const PlatformPickerModal = ({connectedIds, connecting, onClose, onConnect} : PlatformPickerModalProps) => {
+const PlatformPickerModal = ({platforms, connectedIds, connecting, onClose, onConnect} : PlatformPickerModalProps) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur">
@@ -24,7 +25,7 @@ const PlatformPickerModal = ({connectedIds, connecting, onClose, onConnect} : Pl
 
             {/* Platform list */}
             <div className="p-6 flex flex-col gap-2">
-                {PLATFORMS.map((p)=>{
+                {platforms.map((p)=>{
                     const isConnected = connectedIds.includes(p.id);
                     const isConnecting = connecting === p.id;
                     return (

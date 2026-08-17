@@ -1,2 +1,23 @@
 node_modules
+
+# Secrets — never commit. Only *.example templates are tracked.
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+
+# Build output. Scoped to the server on purpose — client/dist is committed and
+# deployed, so a bare `dist` rule would silently stop tracking frontend builds.
+server/dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local tooling config — machine-specific, not shared.
+.claude/
