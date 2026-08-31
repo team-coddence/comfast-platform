@@ -658,7 +658,13 @@ export const openApiSpec = {
         // --------------------------------------------------------------- Posts
         "/api/posts": {
             get: {
-                tags: ["Posts"], summary: "List posts", description: "**Minimum role:** viewer. Every post in the active workspace, newest scheduled first.",
+                tags: ["Posts"], summary: "List posts",
+                description: "**Minimum role:** viewer. Every post in the active workspace, newest scheduled first. `from`/`to` narrow the window to what a calendar view is showing.",
+                parameters: [
+                    { name: "from", in: "query", schema: { type: "string", format: "date-time" }, description: "Only posts scheduled at or after this instant" },
+                    { name: "to", in: "query", schema: { type: "string", format: "date-time" }, description: "Only posts scheduled strictly before this instant" },
+                    { name: "status", in: "query", schema: { type: "string" }, description: "Comma-separated statuses, e.g. `scheduled,draft`" },
+                ],
                 responses: {
                     200: { description: "Posts", content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Post" } } } } },
                     401: UNAUTHORIZED, 403: FORBIDDEN_WORKSPACE,
@@ -701,6 +707,69 @@ export const openApiSpec = {
                     201: { description: "Scheduled", content: { "application/json": { schema: { $ref: "#/components/schemas/Post" } } } },
                     401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
                     503: errorResponse("Media upload is not available on this server"),
+                },
+            },
+        },
+        "/api/posts/{id}": {
+            parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" }, description: "Post id" }],
+            get: {
+                tags: ["Posts"], summary: "Get a post", description: "**Minimum role:** viewer. Scoped to the active workspace.",
+                responses: {
+                    200: { description: "Post", content: { "application/json": { schema: { $ref: "#/components/schemas/Post" } } } },
+                    401: UNAUTHORIZED, 403: FORBIDDEN_WORKSPACE,
+                    404: errorResponse("Post not found", "POST_NOT_FOUND"),
+                },
+            },
+            patch: {
+                tags: ["Posts"], summary: "Edit a scheduled post",
+                description: "**Minimum role:** editor. Accepts JSON or multipart (with a `media` file). Only the fields sent are changed, so a calendar can reschedule with `scheduledFor` alone. Published posts are immutable — the copy is already live on the networks.",
+                requestBody: {
+                    content: {
+                        "multipart/form-data": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    content: { type: "string" },
+                                    platforms: { type: "string", description: "JSON array or comma-separated list", example: '["twitter","linkedin"]' },
+                                    scheduledFor: { type: "string", format: "date-time" },
+                                    status: { type: "string", enum: ["draft", "scheduled"] },
+                                    media: { type: "string", format: "binary", description: "Replaces any existing media" },
+                                    removeMedia: { type: "boolean", description: "Detach the current media. Ignored when `media` is also sent." },
+                                },
+                            },
+                        },
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    content: { type: "string" },
+                                    platforms: { type: "array", items: { type: "string", enum: PLATFORMS } },
+                                    scheduledFor: { type: "string", format: "date-time" },
+                                    status: { type: "string", enum: ["draft", "scheduled"] },
+                                    mediaUrl: { type: "string" },
+                                    mediaType: { type: "string", enum: ["image", "video"] },
+                                    removeMedia: { type: "boolean" },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Updated", content: { "application/json": { schema: { $ref: "#/components/schemas/Post" } } } },
+                    400: errorResponse("Invalid scheduledFor or status"),
+                    401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
+                    404: errorResponse("Post not found", "POST_NOT_FOUND"),
+                    409: errorResponse("The post was already published and can no longer be edited", "POST_ALREADY_PUBLISHED"),
+                    503: errorResponse("Media upload is not available on this server"),
+                },
+            },
+            delete: {
+                tags: ["Posts"], summary: "Delete a post",
+                description: "**Minimum role:** editor. Removes the post from this workspace's queue. A post that already published is not retracted from the social networks.",
+                responses: {
+                    200: { description: "Deleted", content: { "application/json": { schema: { type: "object", properties: { message: { type: "string" }, _id: { type: "string" } } } } } },
+                    401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
+                    404: errorResponse("Post not found", "POST_NOT_FOUND"),
                 },
             },
         },
