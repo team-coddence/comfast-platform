@@ -1,259 +1,193 @@
-import { useEffect, useState } from "react"
-import { PLATFORMS } from "../assets/assets";
-import { ArrowRightIcon, CalendarDaysIcon, CalendarIcon, ClockIcon, SendIcon, XIcon } from "lucide-react";
-import api from "../api/axios";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
 import toast from "react-hot-toast";
+import api from "../api/axios";
+import { PLATFORMS } from "../assets/assets";
 import { useEnabledPlatforms } from "../hooks/useEnabledPlatforms";
 import { useWorkspace } from "../context/WorkspaceContext";
-
+import WeekCalendar from "../components/Scheduler/WeekCalendar";
+import PostEditorPanel from "../components/Scheduler/PostEditorPanel";
+import { STATUS_STYLES, type Post } from "../lib/posts";
+import { addDays, formatWeekRange, startOfWeek, weekDays } from "../lib/calendar";
 
 const Scheduler = () => {
-
   const enabledPlatforms = useEnabledPlatforms();
-  const canCompose = useWorkspace().can("editor");
-  const [posts, setPosts] = useState<any[]>([]);
-  const [content, setContent] = useState("");
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
+  const canEdit = useWorkspace().can("editor");
 
-  const fetchPosts = async () => {
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // The panel is open when either is set: a post to edit, or a slot to fill.
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [composingSlot, setComposingSlot] = useState<Date | null>(null);
+  const panelOpen = editingPost !== null || composingSlot !== null;
+
+  const days = useMemo(() => weekDays(weekStart), [weekStart]);
+
+  const fetchPosts = useCallback(async () => {
     try {
-      const {data} = await api.get("/api/posts")
-      setPosts(data)
+      // Only the visible week, so a workspace with a long history does not ship
+      // its whole queue on every poll.
+      const { data } = await api.get("/api/posts", {
+        params: { from: weekStart.toISOString(), to: addDays(weekStart, 7).toISOString() },
+      });
+      setPosts(data);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error.message);
     }
+  }, [weekStart]);
+
+  useEffect(() => {
+    fetchPosts();
+    // Polling is paused while the editor is open — refreshing under a
+    // half-written post would be worse than a slightly stale grid.
+    if (panelOpen) return;
+    const interval = setInterval(fetchPosts, 15000);
+    return () => clearInterval(interval);
+  }, [fetchPosts, panelOpen]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchPosts();
+    setRefreshing(false);
   }
 
-  useEffect(()=>{
-    (async ()=> await fetchPosts())();
-    const interval = setInterval(async ()=> await fetchPosts(), 10000);
-    return ()=> clearInterval(interval)
-  },[])
+  const closePanel = () => {
+    setEditingPost(null);
+    setComposingSlot(null);
+  }
 
-  const scheduled = posts.filter((p)=> p.status === "scheduled")
-  const published = posts.filter((p)=> p.status === "published")
+  const openPost = (post: Post) => {
+    setComposingSlot(null);
+    setEditingPost(post);
+  }
 
-  const togglePlatform = (id: string)=> setSelectedPlatforms((prev)=> (prev.includes(id) ? prev.filter((p)=> p !== id) : [...prev, id])) 
+  const openSlot = (slot: Date) => {
+    setEditingPost(null);
+    setComposingSlot(slot);
+  }
 
-  const handleSchedule = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if(selectedPlatforms.length === 0){
-      toast.error("Select at least one platform");
-      return;
-    }
-    if(!scheduledDate || !scheduledTime){
-      toast.error("Select date and time");
-      return;
-    }
-    if(selectedPlatforms.includes('instagram') && !mediaFile){
-      toast.error("Instagram requires an image or video");
-      return;
-    }
-    if(selectedPlatforms.includes('tiktok') && !mediaFile){
-      toast.error("TikTok requires a video or image");
-      return;
-    }
-
-    const scheduledFor = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
-    const formData = new FormData();
-    formData.append("content", content);
-    formData.append("scheduledFor", scheduledFor);
-    formData.append("status", "scheduled");
-    formData.append("platforms", JSON.stringify(selectedPlatforms));
-    if(mediaFile) formData.append("media", mediaFile);
-
-    setLoading(true)
+  /** Drag-and-drop reschedule: the one field the calendar can change on its own. */
+  const movePost = async (post: Post, slot: Date) => {
+    const previous = posts;
+    // Optimistic, so the card lands where it was dropped instead of snapping
+    // back for the length of a round trip.
+    setPosts((prev) => prev.map((p) => (p._id === post._id ? { ...p, scheduledFor: slot.toISOString() } : p)));
     try {
-      await api.post("/api/posts", formData, {headers: {"Content-Type": "multipart/form-data"}})
-      toast.success("Post scheduled!");
-      setContent("");
-      setScheduledDate("");
-      setScheduledTime("");
-      setSelectedPlatforms([]);
-      setMediaFile(null);
+      await api.patch(`/api/posts/${post._id}`, { scheduledFor: slot.toISOString() });
+      toast.success("Post rescheduled");
       fetchPosts();
-    } catch (error:any) {
+    } catch (error: any) {
+      setPosts(previous);
       toast.error(error?.response?.data?.message || error.message);
-    }finally{
-      setLoading(false);
     }
   }
+
+  const statusCounts = useMemo(() => {
+    const counts = { draft: 0, scheduled: 0, published: 0, failed: 0 };
+    posts.forEach((p) => { counts[p.status] += 1 });
+    return counts;
+  }, [posts]);
+
+  const platformCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    posts.forEach((p) => p.platforms.forEach((id) => { counts[id] = (counts[id] ?? 0) + 1 }));
+    return counts;
+  }, [posts]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-full">
-      {/* ── Compose panel ── */}
-      {/* Viewers get the queues but not the composer, matching the server's
-          editor requirement on POST /api/posts. */}
-      {canCompose && (
-      <div className="w-full lg:w-[460px] shrink-0">
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <h2 className="text-lg text-slate-700">Compose Post</h2>
+    <div className="space-y-6">
+      {/* ── Header ── */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="mr-auto">
+          <h2 className="text-2xl text-slate-900">Calendar</h2>
+          <p className="text-slate-500 text-sm mt-0.5">Plan and manage your posts</p>
+        </div>
+
+        <div className="flex items-center bg-white border border-slate-200 rounded-lg">
+          <button type="button" aria-label="Previous week" onClick={() => setWeekStart((w) => addDays(w, -7))}
+            className="px-2.5 py-2 text-slate-400 hover:text-slate-700 transition-colors">
+            <ChevronLeftIcon className="size-4" />
+          </button>
+          <span className="px-3 text-sm text-slate-700 whitespace-nowrap">{formatWeekRange(weekStart)}</span>
+          <button type="button" aria-label="Next week" onClick={() => setWeekStart((w) => addDays(w, 7))}
+            className="px-2.5 py-2 text-slate-400 hover:text-slate-700 transition-colors">
+            <ChevronRightIcon className="size-4" />
+          </button>
+        </div>
+
+        <button type="button" onClick={() => setWeekStart(startOfWeek(new Date()))}
+          className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:border-slate-300 transition-colors">
+          Today
+        </button>
+
+        <button type="button" aria-label="Refresh" onClick={handleRefresh}
+          className="p-2.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-slate-700 transition-colors">
+          <RefreshCwIcon className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
+        </button>
+
+        {canEdit && !panelOpen && (
+          <button type="button" onClick={() => openSlot(new Date())}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-red-500 hover:bg-red-600 transition-colors text-white rounded-lg text-sm">
+            <PlusIcon className="size-4" />
+            New Post
+          </button>
+        )}
+      </div>
+
+      {/* ── Status legend ── */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        {(Object.keys(STATUS_STYLES) as (keyof typeof STATUS_STYLES)[]).map((status) => (
+          <span key={status} className="flex items-center gap-1.5 text-xs text-slate-500">
+            <span className={`size-2 rounded-full ${STATUS_STYLES[status].dot}`} />
+            {STATUS_STYLES[status].label}
+            <span className="text-slate-400">({statusCounts[status]})</span>
+          </span>
+        ))}
+      </div>
+
+      {/* ── Calendar + editor ── */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        <div className="flex-1 min-w-0">
+          <WeekCalendar
+            days={days}
+            posts={posts}
+            selectedId={editingPost?._id ?? null}
+            onSelectPost={openPost}
+            onSelectSlot={openSlot}
+            onMovePost={canEdit ? movePost : undefined}
+            canEdit={canEdit}
+          />
+        </div>
+
+        {panelOpen && (
+          <PostEditorPanel
+            post={editingPost}
+            slot={composingSlot}
+            canEdit={canEdit}
+            onClose={closePanel}
+            onSaved={fetchPosts}
+          />
+        )}
+      </div>
+
+      {/* ── Week summary ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 px-5 py-4">
+          <div className="text-2xl text-slate-900">{posts.length}</div>
+          <div className="text-sm text-slate-500 mt-0.5">Posts this week</div>
+        </div>
+        {enabledPlatforms.map((platform) => (
+          <div key={platform.id} className="bg-white rounded-2xl border border-slate-200 px-5 py-4">
+            <div className="text-2xl text-slate-900">{platformCounts[platform.id] ?? 0}</div>
+            <div className="flex items-center gap-1.5 text-sm text-slate-500 mt-0.5">
+              <platform.icon className="size-3.5 text-slate-400" />
+              {PLATFORMS.find((p) => p.id === platform.id)?.name ?? platform.id}
             </div>
-
-            <form className="space-y-5" onSubmit={handleSchedule}>
-              {/* Platforms */}
-              <div>
-                <label className="block text-xs text-slate-500 uppercase mb-2">Platforms</label>
-                <div className="flex flex-wrap gap-3">
-                  {enabledPlatforms.map((p)=>{
-                    const active = selectedPlatforms.includes(p.id);
-                    return (
-                      <button key={p.id} type="button" onClick={()=> togglePlatform(p.id)}
-                      className={`flex items-center gap-1.5 p-3 rounded-md border transition-all duration-150 ${active ? "bg-red-50 border-red-300 text-red-500 scale-103" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
-                        <p.icon className="size-4.5" />
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Content */}
-              <div>
-                <label className="block text-xs text-slate-500 uppercase mb-2">Content</label>
-                <textarea required rows={5} placeholder="What do you want to share today?" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 text-sm placeholder-slate-400 outline-none resize-none" value={content} onChange={(e)=>setContent(e.target.value)}/>
-                  <div className={`text-right text-xs mt-1 font-medium ${content.length > 270 ? "text-red-500" : "text-slate-400"}`}>
-                    {content.length}/280
-                  </div>
-              </div>
-
-              {/* Media upload */}
-              <div>
-                <label className="block text-xs text-slate-500 uppercase mb-2">Media (optional)</label>
-                {mediaFile ? (
-                  <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                    {mediaFile.type.startsWith("image/") 
-                    ? 
-                    <img src={URL.createObjectURL(mediaFile)} alt="preview" className="w-full h-40 object-cover"/> 
-                    : 
-                    <video src={URL.createObjectURL(mediaFile)} className="w-full h-40 object-cover" controls/>}
-
-                    <button type="button" onClick={()=> setMediaFile(null)} className="absolute top-2 right-2 size-7 bg-slate-900/60 hover:bg-slate-900/80 text-white rounded-full flex items-center justify-center transition-colors">
-                      <XIcon className="size-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex items-center justify-center gap-2 p-5 py-10 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-all group">
-                    <span className="text-sm text-slate-500 group-hover:text-red-600 transition-colors">Click to upload image or video</span>
-                    <input type="file" accept="image/*,video/*" className="hidden" onChange={(e)=>e.target.files?.[0] && setMediaFile(e.target.files[0])}/>
-                  </label>
-                )}
-              </div>
-
-              {/* Date & Time */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-500 uppercase mb-2">Date</label>
-                  <div className="relative">
-                    <CalendarIcon className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
-                    <input type="date" required className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-sm outline-none" value={scheduledDate} onChange={(e)=>setScheduledDate(e.target.value)}/>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 uppercase mb-2">Date</label>
-                  <div className="relative">
-                    <ClockIcon className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
-
-                    <input type="time" required className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-sm outline-none" value={scheduledTime} onChange={(e)=>setScheduledTime(e.target.value)}/>
-                  </div>
-                </div>
-              </div>
-
-              {/* Submit */}
-              <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-3.5 bg-red-500 hover:bg-red-600 transition-all text-white rounded-lg">
-                {loading ? (
-                  <>
-                    <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Scheduling…
-                  </>
-                ) : (
-                  <>
-                    Schedule Post
-                    <ArrowRightIcon className="size-4"/>
-                  </>
-                )}
-              </button>
-            </form>
-        </div>
+          </div>
+        ))}
       </div>
-      )}
-
-      {/* ── Queue panels ── */}
-      <div className="flex-1 flex flex-col gap-6 min-w-0">
-        {/* Upcoming */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-              <div className="flex items-center gap-2.5 px-5 py-4 border-b border-slate-100">
-                <CalendarDaysIcon className="size-4 text-zinc-500"/>
-                <h3 className="text-slate-900 text-sm">Upcoming</h3>
-                <span className="ml-auto text-xs font-bold bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded-full">{scheduled.length}</span>
-              </div>
-              <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
-                {scheduled.length === 0 ? (
-                  <div className="py-10 text-center text-slate-400 text-sm">No posts scheduled yet</div>
-                ) : (
-                  scheduled.map((post)=>(
-                    <div key={post._id} className="px-5 py-4 hover:bg-slate-50/60 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                          <div className="flex gap-1.5 items-center">
-                            {post.platforms.map((pl: string)=>{
-                              const meta = PLATFORMS.find((p)=> p.id === pl);
-                              return meta ? <meta.icon key={pl} className="size-3.5 text-slate-400"/> : null
-                            })}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {post.mediaType && <span className="text-xs bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded-md font-semibold capitalize">{post.mediaType}</span>}
-
-                            <span className="text-xs text-slate-400">{new Date(post.scheduledFor).toLocaleString()}</span>
-                          </div>
-                      </div>
-                          <p className="text-sm text-slate-500 line-clamp-2 max-w-md">{post.content}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-        </div>
-
-        {/* Published */}
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-              <div className="flex items-center gap-2.5 px-5 py-4 border-b border-slate-100">
-                <SendIcon className="size-4 text-zinc-500"/>
-                <h3 className="text-slate-900 text-sm">Published</h3>
-                <span className="ml-auto text-xs font-bold bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded-full">{published.length}</span>
-              </div>
-              <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
-                {published.length === 0 ? (
-                  <div className="py-10 text-center text-slate-400 text-sm">No published posts yet </div>
-                ) : (
-                  published.map((post)=>(
-                    <div key={post._id} className="px-5 py-4 hover:bg-slate-50/60 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                          <div className="flex gap-1.5 items-center">
-                            {post.platforms.map((pl: string)=>{
-                              const meta = PLATFORMS.find((p)=> p.id === pl);
-                              return meta ? <meta.icon key={pl} className="size-3.5 text-slate-400"/> : null
-                            })}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {post.mediaType && <span className="text-xs bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded-md font-semibold capitalize">{post.mediaType}</span>}
-
-                            <span className="text-xs text-slate-400">{new Date(post.updatedAt).toLocaleString()}</span>
-                            <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">Published</span>
-                          </div>
-                      </div>
-                          <p className="text-sm text-slate-500 line-clamp-2 max-w-4/5">{post.content}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-        </div>
-
-
-      </div>
-
     </div>
   )
 }
