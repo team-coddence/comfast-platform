@@ -14,6 +14,8 @@ import passport from "./config/passport.js";
 import socialLoginRouter from "./routes/socialLoginRoutes.js";
 import workspaceRouter from "./routes/workspaceRoutes.js";
 import invitationRouter from "./routes/invitationRoutes.js";
+import billingRouter from "./routes/billingRoutes.js";
+import { initBillingJobs } from "./services/billingService.js";
 import swaggerUi from "swagger-ui-express";
 import { openApiSpec } from "./docs/openapi.js";
 import { logError } from "./utils/redact.js";
@@ -83,9 +85,12 @@ app.use("/api/posts", postRouter)
 app.use("/api/activity", activityRouter)
 app.use("/api/workspaces", workspaceRouter)
 app.use("/api/invitations", invitationRouter)
+app.use("/api/billing", billingRouter)
 
 // Initialize Scheduler
 initScheduler()
+// Reconciles payments still in flight and keeps subscription statuses honest.
+initBillingJobs()
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction)=>{

@@ -10,6 +10,8 @@ import { Toaster } from "react-hot-toast";
 import AuthCallback from "./pages/AuthCallback";
 import AcceptInvite from "./pages/AcceptInvite";
 import WorkspaceSettings from "./pages/WorkspaceSettings";
+import Billing from "./pages/Billing";
+import PaymentSimulator from "./pages/PaymentSimulator";
 
 export default function App() {
     return (
@@ -28,6 +30,11 @@ export default function App() {
                     <Route path="/schedule" element={<Scheduler />}/>
                     <Route path="/ai-composer" element={<AIComposer />}/>
                     <Route path="/settings/workspace" element={<WorkspaceSettings />}/>
+                    <Route path="/billing" element={<Billing />}/>
+                    {/* Stands in for the processor's hosted page while payments
+                        are simulated. Inside Layout on purpose: it needs the
+                        same auth and workspace context as the real return trip. */}
+                    <Route path="/billing/simulate/:reference" element={<PaymentSimulator />}/>
 
                 </Route>
             </Routes>

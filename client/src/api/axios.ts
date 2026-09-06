@@ -27,6 +27,7 @@ api.interceptors.request.use((config) => {
 // of context imports (and of the import cycle that would come with them).
 export const AUTH_EXPIRED_EVENT = "auth:expired";
 export const WORKSPACE_INVALID_EVENT = "workspace:invalid";
+export const SUBSCRIPTION_REQUIRED_EVENT = "subscription:required";
 
 api.interceptors.response.use(
     (response) => response,
@@ -46,6 +47,18 @@ api.interceptors.response.use(
             (status === 404 && code === "WORKSPACE_NOT_FOUND")
         ) {
             window.dispatchEvent(new Event(WORKSPACE_INVALID_EVENT));
+        }
+
+        // The trial or subscription ran out. SubscriptionProvider refreshes so
+        // the banner and the paywall reflect it immediately, everywhere —
+        // rather than only in the page that happened to make this call.
+        // Deliberately narrowed by `code`: 402 is also how the OAuth
+        // controller reports Zernio's own billing block, which is our problem
+        // to fix, not something the customer can pay for.
+        if (status === 402 && code === "SUBSCRIPTION_REQUIRED") {
+            window.dispatchEvent(new CustomEvent(SUBSCRIPTION_REQUIRED_EVENT, {
+                detail: error?.response?.data,
+            }));
         }
 
         return Promise.reject(error);

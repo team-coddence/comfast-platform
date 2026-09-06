@@ -33,9 +33,17 @@ const errorResponse = (description: string, code?: string) => ({
     },
 })
 
+const PAYMENT_METHODS = ["mixx", "flooz", "card"];
+const SUBSCRIPTION_STATUSES = ["trialing", "active", "past_due", "expired", "canceled"];
+const PAYMENT_STATUSES = ["pending", "processing", "succeeded", "failed", "canceled", "expired"];
+
 const UNAUTHORIZED = errorResponse("Missing, malformed or expired bearer token");
 const FORBIDDEN_WORKSPACE = errorResponse("You are not a member of the requested workspace", "WORKSPACE_FORBIDDEN");
 const FORBIDDEN_ROLE = errorResponse("Your role in this workspace is too low for this action", "INSUFFICIENT_ROLE");
+const SUBSCRIPTION_REQUIRED = errorResponse(
+    "The workspace's free trial or subscription has ended. The body carries the subscription summary so the client can route to checkout.",
+    "SUBSCRIPTION_REQUIRED",
+);
 
 export const openApiSpec = {
     openapi: "3.1.0",
@@ -73,6 +81,7 @@ export const openApiSpec = {
         { name: "Social OAuth", description: "Connecting accounts through Zernio" },
         { name: "Posts", description: "Scheduling and AI generation" },
         { name: "Activity", description: "Workspace activity feed" },
+        { name: "Billing", description: "Free trial, subscription and online payments (Mixx By Yas, Flooz, bank card)" },
     ],
     components: {
         securitySchemes: {
@@ -219,6 +228,111 @@ export const openApiSpec = {
                     actionType: { type: "string", enum: ["POST_PUBLISHED", "AI_REPLY"] },
                     description: { type: "string" },
                     relatedPost: { type: "object", nullable: true, properties: { _id: objectId, content: { type: "string" } } },
+                    createdAt: { type: "string", format: "date-time" },
+                },
+            },
+
+            Plan: {
+                type: "object",
+                properties: {
+                    id: { type: "string", example: "pro" },
+                    name: { type: "string", example: "Pro" },
+                    description: { type: "string" },
+                    features: { type: "array", items: { type: "string" } },
+                    prices: {
+                        type: "object", nullable: true,
+                        description: "Absent on the trial plan, which cannot be purchased. Amounts are whole francs — XOF has no minor unit.",
+                        properties: {
+                            monthly: { $ref: "#/components/schemas/PlanPrice" },
+                            yearly: { $ref: "#/components/schemas/PlanPrice" },
+                        },
+                    },
+                    limits: {
+                        type: "object",
+                        description: "Null means unlimited.",
+                        properties: {
+                            socialAccounts: { type: "integer", nullable: true },
+                            scheduledPostsPerMonth: { type: "integer", nullable: true },
+                            aiGenerationsPerDay: { type: "integer", nullable: true },
+                            members: { type: "integer", nullable: true },
+                        },
+                    },
+                },
+            },
+            PlanPrice: {
+                type: "object",
+                properties: {
+                    amount: { type: "integer", example: 5000 },
+                    months: { type: "integer", example: 1, description: "How much subscription time one payment buys" },
+                    label: { type: "string", example: "5 000 F CFA" },
+                },
+            },
+            PaymentMethodInfo: {
+                type: "object",
+                properties: {
+                    id: { type: "string", enum: PAYMENT_METHODS },
+                    label: { type: "string", example: "Mixx By Yas" },
+                    provider: { type: "string", example: "paygate", description: 'Processor that will handle it, or "fake" when payments are simulated' },
+                    providerLabel: { type: "string" },
+                    requiresPhone: { type: "boolean", description: "Mobile money needs the number to push to" },
+                    simulated: { type: "boolean", description: "True when no money will move — the UI must say so" },
+                    available: { type: "boolean" },
+                    unavailableReason: { type: "string" },
+                },
+            },
+            BillingCatalog: {
+                type: "object",
+                properties: {
+                    currency: { type: "string", example: "XOF" },
+                    trialDays: { type: "integer", example: 3, description: "Configured with BILLING_TRIAL_DAYS" },
+                    trialPlanId: { type: "string", example: "free" },
+                    paymentsMode: { type: "string", enum: ["auto", "live", "fake"] },
+                    plans: { type: "array", items: { $ref: "#/components/schemas/Plan" } },
+                    methods: { type: "array", items: { $ref: "#/components/schemas/PaymentMethodInfo" } },
+                },
+            },
+            Subscription: {
+                type: "object",
+                description: "Entitlement of the active workspace. `status` is recomputed against the clock on every read, never taken from the stored document.",
+                properties: {
+                    workspace: objectId,
+                    plan: { type: "string", example: "pro" },
+                    planName: { type: "string", example: "Pro" },
+                    status: { type: "string", enum: SUBSCRIPTION_STATUSES },
+                    interval: { type: "string", enum: ["monthly", "yearly"], nullable: true },
+                    trialEndsAt: { type: "string", format: "date-time" },
+                    currentPeriodEnd: { type: "string", format: "date-time", nullable: true },
+                    canceledAt: { type: "string", format: "date-time", nullable: true },
+                    isActive: { type: "boolean", description: "Whether paid features are usable right now" },
+                    isTrialing: { type: "boolean" },
+                    inGracePeriod: { type: "boolean", description: "Paid period is over but the grace window has not closed" },
+                    expiresAt: { type: "string", format: "date-time" },
+                    daysRemaining: { type: "integer" },
+                    trialDays: { type: "integer" },
+                    graceDays: { type: "integer" },
+                    latestPayment: { allOf: [{ $ref: "#/components/schemas/Payment" }], nullable: true },
+                },
+            },
+            Payment: {
+                type: "object",
+                properties: {
+                    reference: { type: "string", example: "SUB7KQ2MZ9XVBTA", description: "Our own transaction id, echoed by the processor" },
+                    plan: { type: "string", example: "pro" },
+                    planName: { type: "string" },
+                    interval: { type: "string", enum: ["monthly", "yearly"] },
+                    amount: { type: "integer", example: 5000 },
+                    currency: { type: "string", example: "XOF" },
+                    amountLabel: { type: "string", example: "5 000 F CFA" },
+                    method: { type: "string", enum: PAYMENT_METHODS },
+                    methodLabel: { type: "string" },
+                    provider: { type: "string", example: "paygate" },
+                    simulated: { type: "boolean" },
+                    status: { type: "string", enum: PAYMENT_STATUSES },
+                    failureReason: { type: "string" },
+                    phone: { type: "string", example: "90123456" },
+                    redirectUrl: { type: "string", description: "Hosted checkout page, for card payments and for the simulator" },
+                    instructions: { type: "string", description: "What to tell the customer when there is no redirect (USSD push)" },
+                    paidAt: { type: "string", format: "date-time" },
                     createdAt: { type: "string", format: "date-time" },
                 },
             },
@@ -603,7 +717,7 @@ export const openApiSpec = {
                 },
                 responses: {
                     201: { description: "Created", content: { "application/json": { schema: { $ref: "#/components/schemas/Account" } } } },
-                    401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
+                    401: UNAUTHORIZED, 402: SUBSCRIPTION_REQUIRED, 403: FORBIDDEN_ROLE,
                 },
             },
         },
@@ -639,7 +753,7 @@ export const openApiSpec = {
                 responses: {
                     200: { description: "Connect URL", content: { "application/json": { schema: { type: "object", properties: { url: { type: "string" } } } } } },
                     401: UNAUTHORIZED,
-                    402: errorResponse("Zernio requires a payment method for this platform", "PAYMENT_REQUIRED"),
+                    402: errorResponse("Either the workspace subscription has ended (SUBSCRIPTION_REQUIRED) or Zernio itself requires a payment method for this platform (PAYMENT_REQUIRED) — read the code to tell them apart", "SUBSCRIPTION_REQUIRED"),
                     403: errorResponse("Insufficient role, or the platform is not enabled"),
                 },
             },
@@ -650,7 +764,9 @@ export const openApiSpec = {
                 description: "**Minimum role:** admin. Pulls the workspace's Zernio profile accounts and upserts them locally. Call after returning from a connect flow.",
                 responses: {
                     200: { description: "Synced accounts", content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Account" } } } } },
-                    401: UNAUTHORIZED, 402: errorResponse("Zernio billing required", "PAYMENT_REQUIRED"), 403: FORBIDDEN_ROLE,
+                    401: UNAUTHORIZED,
+                    402: errorResponse("Workspace subscription ended (SUBSCRIPTION_REQUIRED), or Zernio billing required (PAYMENT_REQUIRED)", "SUBSCRIPTION_REQUIRED"),
+                    403: FORBIDDEN_ROLE,
                 },
             },
         },
@@ -705,7 +821,7 @@ export const openApiSpec = {
                 },
                 responses: {
                     201: { description: "Scheduled", content: { "application/json": { schema: { $ref: "#/components/schemas/Post" } } } },
-                    401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
+                    401: UNAUTHORIZED, 402: SUBSCRIPTION_REQUIRED, 403: FORBIDDEN_ROLE,
                     503: errorResponse("Media upload is not available on this server"),
                 },
             },
@@ -757,7 +873,7 @@ export const openApiSpec = {
                 responses: {
                     200: { description: "Updated", content: { "application/json": { schema: { $ref: "#/components/schemas/Post" } } } },
                     400: errorResponse("Invalid scheduledFor or status"),
-                    401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
+                    401: UNAUTHORIZED, 402: SUBSCRIPTION_REQUIRED, 403: FORBIDDEN_ROLE,
                     404: errorResponse("Post not found", "POST_NOT_FOUND"),
                     409: errorResponse("The post was already published and can no longer be edited", "POST_ALREADY_PUBLISHED"),
                     503: errorResponse("Media upload is not available on this server"),
@@ -803,7 +919,7 @@ export const openApiSpec = {
                 },
                 responses: {
                     200: { description: "Generated", content: { "application/json": { schema: { $ref: "#/components/schemas/Generation" } } } },
-                    401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
+                    401: UNAUTHORIZED, 402: SUBSCRIPTION_REQUIRED, 403: FORBIDDEN_ROLE,
                     429: errorResponse("Hourly AI generation limit reached"),
                     503: errorResponse("AI post generation is not available on this server"),
                 },
@@ -818,6 +934,167 @@ export const openApiSpec = {
                     200: { description: "Activity", content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/ActivityLog" } } } } },
                     401: UNAUTHORIZED, 403: FORBIDDEN_WORKSPACE,
                 },
+            },
+        },
+
+        // ------------------------------------------------------------- Billing
+        "/api/billing/plans": {
+            get: {
+                tags: ["Billing"], summary: "Plan catalogue and available payment methods", security: [],
+                description: [
+                    "Public — the marketing pricing section renders from it.",
+                    "",
+                    "`methods` reflects what this deployment can actually charge: a method whose processor has no credentials comes back `available: false`, or `simulated: true` outside production.",
+                ].join("\n"),
+                responses: {
+                    200: { description: "Catalogue", content: { "application/json": { schema: { $ref: "#/components/schemas/BillingCatalog" } } } },
+                },
+            },
+        },
+        "/api/billing/subscription": {
+            get: {
+                tags: ["Billing"], summary: "Subscription of the active workspace",
+                description: "**Minimum role:** viewer. Creates the trial on first read, so a workspace that has never touched billing still answers with a live trial.",
+                responses: {
+                    200: { description: "Subscription", content: { "application/json": { schema: { $ref: "#/components/schemas/Subscription" } } } },
+                    401: UNAUTHORIZED, 403: FORBIDDEN_WORKSPACE,
+                },
+            },
+        },
+        "/api/billing/subscription/cancel": {
+            post: {
+                tags: ["Billing"], summary: "Stop the subscription renewing",
+                description: "**Minimum role:** owner. Time already paid for is kept — the workspace stays active until `currentPeriodEnd`.",
+                responses: {
+                    200: { description: "Updated subscription", content: { "application/json": { schema: { $ref: "#/components/schemas/Subscription" } } } },
+                    401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
+                },
+            },
+        },
+        "/api/billing/subscription/resume": {
+            post: {
+                tags: ["Billing"], summary: "Undo a cancellation", description: "**Minimum role:** owner.",
+                responses: {
+                    200: { description: "Updated subscription", content: { "application/json": { schema: { $ref: "#/components/schemas/Subscription" } } } },
+                    401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
+                },
+            },
+        },
+        "/api/billing/checkout": {
+            post: {
+                tags: ["Billing"], summary: "Start a payment",
+                description: [
+                    "**Minimum role:** admin.",
+                    "",
+                    "Mobile money (`mixx`, `flooz`) pushes a USSD prompt to `phone` and returns `instructions`; the customer approves it on their handset and the client polls `GET /api/billing/payments/{reference}`.",
+                    "",
+                    "Card returns a `redirectUrl` to the processor's hosted page.",
+                    "",
+                    "Only one payment may be open per workspace at a time — a second attempt returns 409 rather than risking a double charge.",
+                ].join("\n"),
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object", required: ["plan", "interval", "method"],
+                                properties: {
+                                    plan: { type: "string", example: "pro" },
+                                    interval: { type: "string", enum: ["monthly", "yearly"] },
+                                    method: { type: "string", enum: PAYMENT_METHODS },
+                                    phone: {
+                                        type: "string", example: "90 12 34 56",
+                                        description: "Required for mobile money. Accepts +228…, 00228…, 8 digits — normalised server-side.",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    201: { description: "Payment started", content: { "application/json": { schema: { $ref: "#/components/schemas/Payment" } } } },
+                    400: errorResponse("Unknown plan, interval, method, or an invalid phone number", "INVALID_PHONE"),
+                    401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
+                    409: errorResponse("A payment is already in progress for this workspace", "PAYMENT_IN_PROGRESS"),
+                    502: errorResponse("The processor could not be reached", "PROVIDER_UNAVAILABLE"),
+                    503: errorResponse("No processor is configured for this method", "PROVIDER_UNAVAILABLE"),
+                },
+            },
+        },
+        "/api/billing/payments": {
+            get: {
+                tags: ["Billing"], summary: "Payment history", description: "**Minimum role:** admin. The 50 most recent payments.",
+                responses: {
+                    200: { description: "Payments", content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Payment" } } } } },
+                    401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
+                },
+            },
+        },
+        "/api/billing/payments/{reference}": {
+            get: {
+                tags: ["Billing"], summary: "Status of one payment",
+                description: [
+                    "**Minimum role:** viewer. Re-reads the outcome from the processor before answering, so it does not depend on the callback having arrived — this is the endpoint the checkout screen polls.",
+                ].join("\n"),
+                parameters: [{ name: "reference", in: "path", required: true, schema: { type: "string" } }],
+                responses: {
+                    200: { description: "Payment", content: { "application/json": { schema: { $ref: "#/components/schemas/Payment" } } } },
+                    401: UNAUTHORIZED, 403: FORBIDDEN_WORKSPACE,
+                    404: errorResponse("No such payment in this workspace", "PAYMENT_NOT_FOUND"),
+                },
+            },
+        },
+        "/api/billing/payments/{reference}/cancel": {
+            post: {
+                tags: ["Billing"], summary: "Abandon a payment in progress",
+                description: "**Minimum role:** admin. Frees the workspace to start another one. A late settlement is still credited if the processor eventually confirms it.",
+                parameters: [{ name: "reference", in: "path", required: true, schema: { type: "string" } }],
+                responses: {
+                    200: { description: "Payment", content: { "application/json": { schema: { $ref: "#/components/schemas/Payment" } } } },
+                    401: UNAUTHORIZED, 403: FORBIDDEN_ROLE,
+                    404: errorResponse("No such payment in this workspace", "PAYMENT_NOT_FOUND"),
+                },
+            },
+        },
+        "/api/billing/payments/{reference}/simulate": {
+            post: {
+                tags: ["Billing"], summary: "Settle a simulated payment (development)",
+                description: [
+                    "**Minimum role:** admin.",
+                    "",
+                    "Only works on payments created by the simulated processor, which cannot be enabled in production — `PAYMENTS_MODE=\"fake\"` is refused at boot.",
+                ].join("\n"),
+                parameters: [{ name: "reference", in: "path", required: true, schema: { type: "string" } }],
+                requestBody: {
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: { outcome: { type: "string", enum: ["succeeded", "failed"], default: "succeeded" } },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Payment", content: { "application/json": { schema: { $ref: "#/components/schemas/Payment" } } } },
+                    401: UNAUTHORIZED,
+                    403: errorResponse("This payment is handled by a real processor", "NOT_SIMULATED"),
+                    404: errorResponse("No such payment in this workspace", "PAYMENT_NOT_FOUND"),
+                },
+            },
+        },
+        "/api/billing/webhooks/{provider}": {
+            post: {
+                tags: ["Billing"], summary: "Processor callback", security: [],
+                description: [
+                    "Called by PayGate Global or CinetPay, never by a browser. Configure it in the processor's dashboard.",
+                    "",
+                    "The body is not trusted for the outcome: the adapter authenticates the request where the processor supports it (CinetPay's `x-token` HMAC), takes only the transaction reference, and the verdict is then read back from the processor's own status API.",
+                    "",
+                    "Always answers 200 — a processor that receives an error retries for hours, and the reconciliation sweep already covers anything missed.",
+                ].join("\n"),
+                parameters: [{ name: "provider", in: "path", required: true, schema: { type: "string", enum: ["paygate", "cinetpay", "fake"] } }],
+                responses: { 200: { description: "Acknowledged" } },
             },
         },
     },

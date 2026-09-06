@@ -1,4 +1,4 @@
-import { CalendarDaysIcon, LayoutDashboardIcon, LogOutIcon, UsersIcon, UsersRoundIcon, Wand2Icon } from 'lucide-react'
+import { CalendarDaysIcon, CreditCardIcon, LayoutDashboardIcon, LogOutIcon, UsersIcon, UsersRoundIcon, Wand2Icon } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
@@ -15,6 +15,7 @@ const Sidebar = ({isOpen, setIsOpen} : {isOpen: boolean, setIsOpen: (val: boolea
         { name: "Scheduler", icon: CalendarDaysIcon, path: "/schedule" },
         { name: "AI Composer", icon: Wand2Icon, path: "/ai-composer" },
         { name: "Members", icon: UsersRoundIcon, path: "/settings/workspace" },
+        { name: "Abonnement", icon: CreditCardIcon, path: "/billing" },
     ]
 
   return (

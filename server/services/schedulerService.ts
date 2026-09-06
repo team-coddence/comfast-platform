@@ -5,6 +5,13 @@ import zernio from "../config/zernio.js";
 import { ActivityLog } from "../models/ActivityLog.js";
 import { logError } from "../utils/redact.js";
 import { ensureWorkspaceForUser } from "./workspaceService.js";
+import { Workspace } from "../models/Workspace.js";
+import { getSubscriptionState } from "./subscriptionService.js";
+
+// How long a post waits for its workspace to renew before it is given up on.
+// Publishing a two-day-old post the moment someone pays is worse than failing
+// it: the content is stale and the customer did not ask for it to go out now.
+const UNPAID_HOLD_HOURS = 24;
 
 export const initScheduler = ()=>{
     cron.schedule("* * * * *", async ()=>{
@@ -20,7 +27,33 @@ export const initScheduler = ()=>{
                     // forever rather than failing visibly. Resolve the author's
                     // workspace instead. Remove once the backfill has been
                     // verified in every environment.
-                    const workspaceId = post.workspace ?? (await ensureWorkspaceForUser({_id: post.user}))._id;
+                    const workspace = post.workspace
+                        ? await Workspace.findById(post.workspace)
+                        : await ensureWorkspaceForUser({_id: post.user});
+
+                    if(!workspace){
+                        console.log(`Post ${post._id} belongs to a workspace that no longer exists`);
+                        post.status = "failed";
+                        await post.save();
+                        continue;
+                    }
+                    const workspaceId = workspace._id;
+
+                    // The paywall applies at publish time too, not only at
+                    // scheduling time: a post queued during the trial must not
+                    // publish for free a week after the trial ended.
+                    const subscription = await getSubscriptionState(workspace);
+                    if(!subscription.isActive){
+                        const heldFor = now.getTime() - post.scheduledFor.getTime();
+                        if(heldFor > UNPAID_HOLD_HOURS * 60 * 60 * 1000){
+                            console.log(`Post ${post._id} failed: workspace ${workspaceId} has no active subscription`);
+                            post.status = "failed";
+                            await post.save();
+                        }
+                        // Otherwise leave it scheduled — paying within the day
+                        // publishes it on the next sweep.
+                        continue;
+                    }
 
                     const accounts = await Account.find({
                         workspace: workspaceId,

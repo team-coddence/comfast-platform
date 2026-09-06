@@ -114,6 +114,28 @@ const SERVICES: ServiceSpec[] = [
             { name: "CLOUDINARY_API_SECRET", secret: true },
         ],
     },
+    {
+        id: "paygate",
+        label: "PayGate Global (Mixx by Yas, Flooz)",
+        required: false,
+        disables: "mobile money checkout (falls back to simulated payments outside production)",
+        vars: [{ name: "PAYGATE_API_KEY", secret: true }],
+    },
+    {
+        id: "cinetpay",
+        label: "CinetPay (bank card)",
+        required: false,
+        disables: "card checkout (falls back to simulated payments outside production)",
+        vars: [
+            { name: "CINETPAY_SITE_ID" },
+            { name: "CINETPAY_API_KEY", secret: true },
+            // Used to verify the HMAC on CinetPay's server-to-server
+            // notification. Optional in CinetPay's own dashboard, required
+            // here: an unauthenticated notification endpoint that credits a
+            // subscription is a free-subscription generator.
+            { name: "CINETPAY_SECRET_KEY", secret: true },
+        ],
+    },
 ];
 
 // --- Resolution --------------------------------------------------------------
@@ -140,6 +162,46 @@ const unquote = (value: string): string =>
     /^(".*"|'.*')$/s.test(value) ? value.slice(1, -1) : value;
 
 const read = (name: string): string => unquote((process.env[name] ?? "").trim()).trim();
+
+// Problems found while parsing non-secret settings. Collected rather than
+// thrown so `assertEnvironment` can report every one of them at once, next to
+// the credential problems, instead of dying on the first.
+const settingProblems: string[] = [];
+
+const readPositiveInt = (name: string, fallback: number): number => {
+    const raw = read(name);
+    if (!raw) return fallback;
+
+    const parsed = Number(raw);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        settingProblems.push(`${name} must be a positive whole number (got "${raw}")`);
+        return fallback;
+    }
+    return parsed;
+}
+
+export const PAYMENT_MODES = ["auto", "live", "fake"] as const;
+export type PaymentsMode = (typeof PAYMENT_MODES)[number];
+
+const readPaymentsMode = (): PaymentsMode => {
+    const raw = read("PAYMENTS_MODE").toLowerCase();
+    if (!raw) return isProduction ? "live" : "auto";
+
+    if (!(PAYMENT_MODES as readonly string[]).includes(raw)) {
+        settingProblems.push(`PAYMENTS_MODE must be one of ${PAYMENT_MODES.join(", ")} (got "${raw}")`);
+        return isProduction ? "live" : "auto";
+    }
+
+    // The whole point of the fake processor is that it marks a payment as
+    // settled without any money moving. In production that is a free
+    // subscription for anyone who reaches the checkout endpoint.
+    if (raw === "fake" && isProduction) {
+        settingProblems.push('PAYMENTS_MODE="fake" is refused in production — simulated payments would grant free subscriptions');
+        return "live";
+    }
+
+    return raw as PaymentsMode;
+}
 
 const resolveService = (spec: ServiceSpec): ServiceStatus => {
     const problems: string[] = [];
@@ -201,6 +263,43 @@ export const env = {
         apiKey: read("CLOUDINARY_API_KEY") || undefined,
         apiSecret: read("CLOUDINARY_API_SECRET") || undefined,
     },
+
+    billing: {
+        // How long a brand new workspace may use the product before it has to
+        // subscribe. Deliberately configurable: 3 days at launch, but growth
+        // experiments move this number without a code change.
+        trialDays: readPositiveInt("BILLING_TRIAL_DAYS", 3),
+        // XOF has no minor unit, so every amount in the codebase is a whole
+        // franc. Changing this to a decimal currency would need the amount
+        // handling revisited, not just this string.
+        currency: read("BILLING_CURRENCY") || "XOF",
+        // Grace period after `currentPeriodEnd` during which a workspace keeps
+        // working. Mobile money settlement can lag, and cutting someone off
+        // while their payment is in flight is the worst possible moment.
+        graceDays: readPositiveInt("BILLING_GRACE_DAYS", 2),
+    },
+
+    payments: {
+        // "auto"  — use a real processor where one is configured, simulate the rest.
+        // "live"  — real processors only; a missing credential is an error at checkout.
+        // "fake"  — simulate everything, even if credentials exist. Never in production.
+        mode: readPaymentsMode(),
+        // Which processor handles which method. Empty means "pick the first
+        // configured processor that supports the method".
+        mobileMoneyProvider: read("PAYMENTS_MOBILE_PROVIDER").toLowerCase() || undefined,
+        cardProvider: read("PAYMENTS_CARD_PROVIDER").toLowerCase() || undefined,
+    },
+
+    paygate: {
+        apiKey: read("PAYGATE_API_KEY") || undefined,
+        baseUrl: read("PAYGATE_BASE_URL") || "https://paygateglobal.com",
+    },
+    cinetpay: {
+        siteId: read("CINETPAY_SITE_ID") || undefined,
+        apiKey: read("CINETPAY_API_KEY") || undefined,
+        secretKey: read("CINETPAY_SECRET_KEY") || undefined,
+        baseUrl: read("CINETPAY_BASE_URL") || "https://api-checkout.cinetpay.com/v2",
+    },
 } as const;
 
 /** First configured frontend origin — used for OAuth redirects. */
@@ -217,6 +316,9 @@ export const primaryFrontendUrl = env.frontendUrls[0];
 export const assertEnvironment = (): void => {
     const fatal: string[] = [];
     const warnings: string[] = [];
+
+    // Malformed non-secret settings (trial length, payments mode, …).
+    fatal.push(...settingProblems);
 
     for (const url of env.frontendUrls) {
         const invalid = isUrl(url);
@@ -265,6 +367,15 @@ export const assertEnvironment = (): void => {
             : status.required ? "FAIL"
             : "off ";
         console.log(`[config] ${mark} ${status.label}`);
+    }
+
+    console.log(`[config] billing: ${env.billing.trialDays}-day free trial, prices in ${env.billing.currency}, payments mode "${env.payments.mode}"`);
+
+    // Simulated payments are the correct default for a developer checkout, and
+    // a silent disaster if nobody notices they are still on in a staging
+    // environment people are testing real cards against.
+    if (env.payments.mode === "fake") {
+        warnings.push("payments are SIMULATED — no money moves and every checkout can be settled by hand");
     }
 
     for (const warning of warnings) console.warn(`[config] warning: ${warning}`);
