@@ -5,6 +5,7 @@ import { MenuIcon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useWorkspace } from '../context/WorkspaceContext'
 import NoWorkspace from './NoWorkspace'
+import SubscriptionBanner from './SubscriptionBanner'
 
 const pageTitles: Record<string, string> = {
     "/dashboard" : "Dashboard",
@@ -12,6 +13,7 @@ const pageTitles: Record<string, string> = {
     "/schedule": "Post Scheduler",
     "/ai-composer": "AI Composer",
     "/settings/workspace": "Workspace Settings",
+    "/billing": "Abonnement & paiement",
 }
 
 const Layout = () => {
@@ -21,7 +23,10 @@ const Layout = () => {
 
     const location = useLocation()
 
-    const title = pageTitles[location.pathname] || "SocialAI";
+    // The billing routes include a dynamic segment (/billing/simulate/:ref),
+    // which the exact-match table cannot cover.
+    const title = pageTitles[location.pathname]
+        || (location.pathname.startsWith("/billing") ? pageTitles["/billing"] : "SocialAI");
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
@@ -73,6 +78,11 @@ const Layout = () => {
             </div>
 
         </header>
+
+        {/* Trial countdown, or why publishing stopped working. Renders itself
+            away when there is nothing worth interrupting for. */}
+        <SubscriptionBanner />
+
         {/*
           Keyed on the workspace so a switch unmounts the whole page subtree.
           Every page fetches in a mount-only effect and there is no cache layer,

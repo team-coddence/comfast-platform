@@ -21,3 +21,5 @@ npm-debug.log*
 
 # Local tooling config — machine-specific, not shared.
 .claude/
+
+docs/
